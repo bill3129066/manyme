@@ -1,10 +1,12 @@
 import { formatRate } from '@/lib/utils'
 
-export default function CostBreakdown({ curatorRate, platformFee }: {
+export default function CostBreakdown({
+  curatorRate,
+  platformFee,
+}: {
   curatorRate: number
   platformFee: number
 }) {
-
   return (
     <div className="bg-transparent">
       <p className="text-text-tertiary text-xs uppercase tracking-widest mb-4">每秒費用組成</p>

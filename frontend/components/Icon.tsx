@@ -10,6 +10,24 @@ const paths = {
   check: 'm5 12 4 4L19 6',
   back: 'M20 12H4m6-6-6 6 6 6',
 } as const
-export function Icon({ name = 'arrow', ...props }: SVGProps<SVGSVGElement> & { name?: keyof typeof paths }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name]} /></svg>
+export function Icon({
+  name = 'arrow',
+  ...props
+}: SVGProps<SVGSVGElement> & { name?: keyof typeof paths }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d={paths[name]} />
+    </svg>
+  )
 }

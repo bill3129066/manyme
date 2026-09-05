@@ -1,3 +1,6 @@
+import { escrowEvent } from '../services/onchain/receipts.js'
+import { publicClient } from '../services/onchain/baseClient.js'
+import { manyMeEscrowAbi } from '../../../shared/abis/ManyMeEscrow.js'
 import { Hono } from 'hono'
 import {
   listAgents, getAgentById, createAgent, updateAgent, deactivateAgent,
@@ -132,7 +135,19 @@ agentsRoutes.post('/',
       return c.json({ error: 'Missing required fields: name, description, systemPrompt' }, 400)
     }
 
+    let onchainAgentId: number | undefined
+    let ratePerSecond = body.ratePerSecond
+    if (body.registrationTxHash) {
+      try {
+        const event = await escrowEvent(body.registrationTxHash, 'AgentRegistered')
+        if (event.curator.toLowerCase() !== wallet.toLowerCase()) return c.json({error:'Registration belongs to another wallet'},403)
+        onchainAgentId = Number(event.agentId)
+        const rates = await publicClient.readContract({address:config.escrowAddress as `0x${string}`,abi:manyMeEscrowAbi,functionName:'sessionRate',args:[event.agentId]})
+        ratePerSecond = Number(rates[0])
+      } catch (e:any) { return c.json({error:e.shortMessage || e.message},400) }
+    }
     const agent = createAgent({
+      onchainAgentId,
       creatorWallet: wallet,
       name,
       description,
@@ -145,7 +160,7 @@ agentsRoutes.post('/',
       maxTokens: body.maxTokens,
       toolsJson: body.toolsJson,
       inputSchemaJson: body.inputSchemaJson,
-      ratePerSecond: body.ratePerSecond,
+      ratePerSecond,
       metadataUri: body.metadataUri,
     })
 

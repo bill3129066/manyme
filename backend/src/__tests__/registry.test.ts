@@ -92,3 +92,8 @@ describe('agentRegistry', () => {
     expect(result.avg_rating).toBe(4)
   })
 })
+
+test('seller sees published agents with a checksum wallet address',()=>{
+ const agent=createAgent({creatorWallet:'0xabcdef1234',name:'Seller listing',description:'test',systemPrompt:'test'})
+ expect(listAgents({creatorWallet:'0xaBcDeF1234'}).some(row=>row.id===agent.id)).toBe(true)
+})

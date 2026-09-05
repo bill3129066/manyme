@@ -1,3 +1,4 @@
+import { getSession as getChainSession } from '../services/onchain/contractClient.js'
 import { Hono } from 'hono'
 import { getDb } from '../db/client.js'
 import {
@@ -28,10 +29,11 @@ sessionsRoutes.get('/', (c) => {
   return c.json(rows)
 })
 
-sessionsRoutes.get('/:id', (c) => {
+sessionsRoutes.get('/:id', async (c) => {
   const session = getSessionDetails(c.req.param('id'))
   if (!session) return c.json({ error: 'Not found' }, 404)
-  return c.json(session)
+  const chain = session.onchain_session_id != null ? await getChainSession(BigInt(session.onchain_session_id as number)) : null
+  return c.json({...session,accrued_total:chain ? Number(chain.accruedTotal) : 0})
 })
 
 sessionsRoutes.get('/:id/stream', (c) => {
@@ -71,14 +73,14 @@ sessionsRoutes.post(
   requireSignature('create-session'),
   async (c) => {
     const wallet: string = c.get('verifiedWallet')
-    const body = await c.req.json<{ agentId?: string; inputs?: Record<string, string> }>()
+    const body = await c.req.json<{ agentId?: string; inputs?: Record<string, string>; txHash?: string }>()
 
     if (!body.agentId) {
       return c.json({ error: 'agentId is required' }, 400)
     }
 
     try {
-      const { sessionId } = startSession(body.agentId, wallet, body.inputs)
+      const { sessionId } = await startSession(body.agentId, wallet, body.inputs, body.txHash)
       const details = getSessionDetails(sessionId)
 
       return c.json(
@@ -98,6 +100,7 @@ sessionsRoutes.post(
 
 sessionsRoutes.post(
   '/:id/chat',
+  requireSignature('chat-session'),
   async (c) => {
     const sessionId = c.req.param('id')
     const body = await c.req.json<{
@@ -117,6 +120,7 @@ sessionsRoutes.post(
         sessionId,
         body.message,
         body.history ?? [],
+        c.get('verifiedWallet'),
       )
       return c.json({ reply, toolCallCount })
     } catch (e: any) {
@@ -163,12 +167,12 @@ sessionsRoutes.post(
 sessionsRoutes.post(
   '/:id/stop',
   requireSignature('stop-session'),
-  (c) => {
+  async (c) => {
     const wallet: string = c.get('verifiedWallet')
     const sessionId = c.req.param('id')
 
     try {
-      stopSession(sessionId, wallet)
+      await stopSession(sessionId, wallet)
       return c.json({ id: sessionId, status: 'stopped' })
     } catch (e: any) {
       const status = e.message?.includes('not found') ? 404 : 403

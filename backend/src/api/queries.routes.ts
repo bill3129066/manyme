@@ -1,8 +1,10 @@
+import { chatWithAgent } from '../services/agent/agentExecutor.js'
 import { Hono } from 'hono'
 import { x402Middleware } from '../services/payments/x402Server.js'
 import { getDb } from '../db/client.js'
 
 export const queriesRoutes = new Hono()
+queriesRoutes.use('/agent/:id/*',async(c,next)=>{const agent=getDb().prepare('SELECT id FROM agents WHERE id=? AND active=1').get(c.req.param('id'));if(!agent)return c.json({error:'Agent not found'},404);await next()})
 
 queriesRoutes.get('/agent/:id/summary',
   x402Middleware({ amount: '0.001', asset: 'USDC', network: 'base-sepolia' }),
@@ -41,20 +43,12 @@ queriesRoutes.post('/agent/:id/ask',
     const db = getDb()
     const agent = db.prepare('SELECT * FROM agents WHERE id = ?').get(agentId) as any
 
-    const recentSteps = db.prepare(`
-      SELECT ss.body FROM session_steps ss
-      JOIN sessions s ON ss.session_id = s.id
-      WHERE s.agent_id = ? ORDER BY ss.created_at DESC LIMIT 5
-    `).all(agentId) as any[]
-
-    const context = recentSteps.map(s => s.body).join('. ')
+    const response=await chatWithAgent(agentId,'x402',question,[])
 
     return c.json({
       agentId,
       question,
-      answer: context
-        ? `Based on recent analysis: ${context.slice(0, 200)}. ${question.includes('recommend') ? 'Recommendation: Monitor closely and adjust position if metrics change significantly.' : 'Current data suggests stable conditions.'}`
-        : 'No recent analysis context available. Please start a session first.',
+      answer: response.reply,
       timestamp: new Date().toISOString(),
       pricePaid: '0.003 USDC',
     })

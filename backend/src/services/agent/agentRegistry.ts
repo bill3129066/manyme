@@ -12,7 +12,7 @@ export function listAgents(filters?: { category?: string; creatorWallet?: string
     params.$category = filters.category
   }
   if (filters?.creatorWallet) {
-    sql += ' AND creator_wallet = $creator'
+    sql += ' AND creator_wallet = $creator COLLATE NOCASE'
     params.$creator = filters.creatorWallet
   }
   if (filters?.q) {

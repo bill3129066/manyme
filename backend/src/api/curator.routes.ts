@@ -39,7 +39,7 @@ curatorRoutes.get('/:wallet/agents', (c) => {
   const db = getDb()
   const wallet = c.req.param('wallet')
   const agents = db
-    .prepare('SELECT * FROM agents WHERE curator_wallet = ? COLLATE NOCASE')
+    .prepare('SELECT * FROM agents WHERE creator_wallet = ? COLLATE NOCASE')
     .all(wallet)
   return c.json(agents)
 })
@@ -54,7 +54,7 @@ curatorRoutes.get('/:wallet/sessions', (c) => {
     FROM sessions s
     JOIN agents a ON s.agent_id = a.id
     LEFT JOIN curator_earnings ce ON ce.session_id = s.id
-    WHERE a.curator_wallet = ? COLLATE NOCASE
+    WHERE a.creator_wallet = ? COLLATE NOCASE
     ORDER BY s.created_at DESC
     LIMIT 50
   `,

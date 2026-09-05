@@ -4,14 +4,15 @@ export const config = {
   platformWallet: process.env.PLATFORM_WALLET || '0x0000000000000000000000000000000000000000',
   platformFeeRate: BigInt(process.env.PLATFORM_FEE_RATE || '300'),
   baseRpc: process.env.BASE_RPC_URL || 'https://sepolia.base.org',
+  chainId: Number(process.env.BASE_CHAIN_ID || '84532'),
   baseWs: process.env.BASE_WS_URL || '',
   escrowAddress: process.env.ESCROW_CONTRACT_ADDRESS || '',
   usdcAddress: process.env.USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
   // Dev-only escape hatch: credit deposits without on-chain verification
   allowUnverifiedDeposits: process.env.ALLOW_UNVERIFIED_DEPOSITS === 'true',
   // x402: mock mode accepts any X-Payment header; real mode verifies/settles
-  // via the facilitator. Defaults to mock until explicitly disabled.
-  x402Mock: process.env.X402_MOCK !== 'false',
+  // via the facilitator. Real payments are the default.
+  x402Mock: process.env.X402_MOCK === 'true',
   x402FacilitatorUrl: process.env.X402_FACILITATOR_URL || 'https://x402.org/facilitator',
   platformOperatorKey: process.env.PLATFORM_OPERATOR_KEY || '',
   okxApiKey: process.env.OKX_API_KEY || '',

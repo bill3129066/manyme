@@ -140,12 +140,12 @@ async function executeRpcCall(toolName: string, chainId: string, args: Record<st
       }
 
       const topics = args.topics as string[] | undefined
-      const logs = await client.getLogs({
+      const logs = await client.request({method:'eth_getLogs',params:[{
         address: args.address as `0x${string}` | undefined,
-        topics: topics as any,
-        fromBlock,
-        toBlock,
-      })
+        topics: topics as `0x${string}`[] | undefined,
+        fromBlock: `0x${fromBlock.toString(16)}`,
+        toBlock: `0x${toBlock.toString(16)}`,
+      }]})
 
       const truncated = logs.length > MAX_LOGS_RETURNED
       const returnedLogs = logs.slice(0, MAX_LOGS_RETURNED).map(log => ({

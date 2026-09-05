@@ -8,24 +8,24 @@ import { queriesRoutes } from './api/queries.routes.js';
 import { initDb } from './db/init.js';
 import { EventWatcher } from './services/onchain/eventWatcher.js';
 import { ProofRelayer } from './services/proof/proofRelayer.js';
-import { TimeoutWatcher } from './services/proof/timeoutWatcher.js';
 import { sseHub } from './services/realtime/sseHub.js';
 
 const app = new Hono();
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002').split(',').map(s => s.trim())
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000').split(',').map(s => s.trim())
 
 app.use('*', cors({
   origin: allowedOrigins,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Cache-Control', 'X-Payment', 'Last-Event-ID', 'X-Wallet-Address', 'X-Signature', 'X-Timestamp'],
+  exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
+  allowHeaders: ['Access-Control-Expose-Headers', 'Content-Type', 'Cache-Control', 'X-Payment', 'PAYMENT-SIGNATURE', 'Last-Event-ID', 'X-Wallet-Address', 'X-Signature', 'X-Timestamp'],
 }));
 
 initDb();
 
-const eventWatcher = new EventWatcher({} as any);
+const eventWatcher = new EventWatcher();
 const proofRelayer = new ProofRelayer();
-const timeoutWatcher = new TimeoutWatcher();
+
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
@@ -40,7 +40,7 @@ serve({ fetch: app.fetch, port }, async () => {
   console.log(`Backend running on http://localhost:${port}`);
   eventWatcher.start();
   await proofRelayer.start();
-  timeoutWatcher.start();
+
   sseHub.startPingLoop();
 });
 

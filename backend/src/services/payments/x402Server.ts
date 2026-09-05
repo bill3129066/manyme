@@ -2,9 +2,16 @@ import type { Context, MiddlewareHandler, Next } from 'hono'
 import { paymentMiddleware, x402ResourceServer } from '@x402/hono'
 import { ExactEvmScheme } from '@x402/evm/exact/server'
 import { HTTPFacilitatorClient } from '@x402/core/server'
+import {
+  decodePaymentResponseHeader,
+  decodePaymentSignatureHeader,
+  encodePaymentRequiredHeader,
+} from '@x402/core/http'
+import type { PaymentPayload, PaymentRequired, SettleResponse } from '@x402/core/types'
 import { getDb } from '../../db/client.js'
 import { randomUUID } from 'crypto'
 import { config } from '../../config.js'
+import { parseUnits, formatUnits } from 'viem'
 
 export interface PriceConfig {
   amount: string
@@ -23,6 +30,30 @@ const CAIP2_NETWORKS: Record<PriceConfig['network'], `eip155:${number}`> = {
   'base-sepolia': 'eip155:84532',
 }
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const PAYMENT_SIGNATURE_HEADER = 'PAYMENT-SIGNATURE'
+const PAYMENT_RESPONSE_HEADER = 'PAYMENT-RESPONSE'
+
+function getAtomicAmount(amount: string): string {
+  return parseUnits(amount, 6).toString()
+}
+
+function getPaymentRequirements(price: PriceConfig) {
+  return {
+    amount: getAtomicAmount(price.amount),
+    asset: config.usdcAddress,
+    extra: {
+      name: 'USDC',
+      version: '2',
+    },
+  }
+}
+
+function hasPlatformWallet(): boolean {
+  return /^0x[0-9a-fA-F]{40}$/.test(config.platformWallet)
+    && config.platformWallet.toLowerCase() !== ZERO_ADDRESS
+}
+
 // Shared resource server: verifies and settles payments via the facilitator
 let resourceServer: x402ResourceServer | null = null
 function getResourceServer(): x402ResourceServer {
@@ -35,12 +66,20 @@ function getResourceServer(): x402ResourceServer {
   return resourceServer
 }
 
-function logSale(c: Context, price: PriceConfig, payerAddress: string) {
+function logSale(
+  c: Context,
+  price: PriceConfig,
+  settlement: SettleResponse,
+  paymentPayload?: PaymentPayload,
+) {
   try {
+    if (!settlement.success) return
+
     const db = getDb()
     // agents.id is a UUID string — keep it verbatim or the FK check fails
     const agentId = c.req.param('id') || ''
-    const paymentHeader = c.req.header('X-Payment') || c.req.header('x-payment') || ''
+    const payerAddress = settlement.payer || extractPayer(paymentPayload) || 'unknown'
+    const amount = settlement.amount || paymentPayload?.accepted.amount || getAtomicAmount(price.amount)
     db.prepare(`
       INSERT INTO query_sales (id, agent_id, route, payer_address, amount_usdc, receipt_ref, created_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
@@ -49,23 +88,60 @@ function logSale(c: Context, price: PriceConfig, payerAddress: string) {
       agentId,
       c.req.path,
       payerAddress,
-      price.amount,
-      paymentHeader.slice(0, 100),
+      formatUnits(BigInt(amount),6),
+      settlement.transaction || null,
     )
   } catch (e) {
     console.error('[x402] Failed to record query sale:', e)
   }
 }
 
-/** Best-effort payer extraction from the base64 X-PAYMENT payload. */
-function extractPayer(c: Context): string {
+/** Best-effort payer extraction from a decoded x402 payment payload. */
+function extractPayer(paymentPayload?: PaymentPayload): string | undefined {
+  const payload = paymentPayload?.payload
+  if (!payload || typeof payload !== 'object') return undefined
+
+  const authorization = (payload as Record<string, unknown>).authorization
+  if (authorization && typeof authorization === 'object') {
+    const payer = (authorization as Record<string, unknown>).from
+    if (typeof payer === 'string' && payer) return payer
+  }
+
+  const permit2Authorization = (payload as Record<string, unknown>).permit2Authorization
+  if (permit2Authorization && typeof permit2Authorization === 'object') {
+    const payer = (permit2Authorization as Record<string, unknown>).from
+    if (typeof payer === 'string' && payer) return payer
+  }
+
+  const payer = (payload as Record<string, unknown>).from
+  return typeof payer === 'string' && payer ? payer : undefined
+}
+
+function extractPaymentPayload(c: Context): PaymentPayload | undefined {
+  const header = c.req.header(PAYMENT_SIGNATURE_HEADER)
+  if (!header) return undefined
+
   try {
-    const header = c.req.header('X-Payment') || c.req.header('x-payment')
-    if (!header) return 'unknown'
-    const payload = JSON.parse(Buffer.from(header, 'base64').toString('utf8'))
-    return payload?.payload?.authorization?.from || 'unknown'
+    return decodePaymentSignatureHeader(header)
   } catch {
-    return 'unknown'
+    return undefined
+  }
+}
+
+function recordSettlementFromResponse(
+  c: Context,
+  price: PriceConfig,
+  response: Response | undefined,
+  paymentPayload?: PaymentPayload,
+): void {
+  const header = response?.headers.get(PAYMENT_RESPONSE_HEADER)
+  if (!header) return
+
+  try {
+    const settlement = decodePaymentResponseHeader(header)
+    if (settlement.success) logSale(c, price, settlement, paymentPayload)
+  } catch (error) {
+    console.error('[x402] Failed to decode settlement response:', error)
   }
 }
 
@@ -75,14 +151,16 @@ function extractPayer(c: Context): string {
  * so whatever path reaches it is the protected resource.
  */
 function realX402Middleware(price: PriceConfig): MiddlewareHandler {
+  const payment = getPaymentRequirements(price)
   const gate = paymentMiddleware(
     {
       '*': {
         accepts: {
           scheme: 'exact',
-          price: `$${price.amount}`,
+          price: payment,
           network: CAIP2_NETWORKS[price.network],
           payTo: config.platformWallet as `0x${string}`,
+          maxTimeoutSeconds: 300,
         },
         description: `Pay ${price.amount} ${price.asset} to access this analysis`,
       },
@@ -91,50 +169,57 @@ function realX402Middleware(price: PriceConfig): MiddlewareHandler {
   )
 
   return async (c: Context, next: Next) => {
-    return gate(c, async () => {
-      logSale(c, price, extractPayer(c))
+    const paymentPayload = extractPaymentPayload(c)
+    const gateResult = await gate(c, async () => {
       await next()
     })
+    const response = c.res || (gateResult instanceof Response ? gateResult : undefined)
+    recordSettlementFromResponse(c, price, response, paymentPayload)
+    return gateResult
   }
 }
 
-/** Mock middleware (X402_MOCK=true): accepts any non-empty X-Payment header. */
+/** Mock middleware (X402_MOCK=true): accepts any non-empty payment header. */
 function mockX402Middleware(price: PriceConfig): MiddlewareHandler {
   return async (c: Context, next: Next) => {
-    const paymentHeader = c.req.header('X-Payment') || c.req.header('x-payment')
+    const paymentHeader = c.req.header(PAYMENT_SIGNATURE_HEADER) || c.req.header('X-PAYMENT')
 
     if (!paymentHeader) {
-      return c.json({
-        error: 'Payment Required',
-        x402Version: 1,
-        accepts: [{
-          scheme: 'exact',
-          network: price.network,
-          maxAmountRequired: price.amount,
-          resource: c.req.url,
+      const paymentRequired: PaymentRequired = {
+        x402Version: 2,
+        resource: {
+          url: c.req.url,
           description: `Pay ${price.amount} ${price.asset} to access this analysis`,
           mimeType: 'application/json',
-          payTo: process.env.X402_PAYMENT_ADDRESS || process.env.PLATFORM_WALLET || '0x0000000000000000000000000000000000000000',
+        },
+        accepts: [{
+          scheme: 'exact',
+          network: CAIP2_NETWORKS[price.network],
+          amount: getAtomicAmount(price.amount),
+          payTo: config.platformWallet || ZERO_ADDRESS,
           maxTimeoutSeconds: 300,
-          asset: price.asset === 'USDC'
-            ? (process.env.USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e')
-            : price.asset,
-          extra: { name: 'ManyMe Analysis', version: '1.0' },
+          asset: config.usdcAddress,
+          extra: { name: 'USDC', version: '2' },
         }],
-      }, 402)
+      }
+      c.header('PAYMENT-REQUIRED', encodePaymentRequiredHeader(paymentRequired))
+      return c.json({ error: 'Payment Required' }, 402)
     }
 
-    logSale(c, price, 'unknown')
     await next()
   }
+}
+
+function unavailableX402Middleware(): MiddlewareHandler {
+  return async (c: Context) => c.json({
+    error: 'x402 payments are unavailable',
+    message: 'PLATFORM_WALLET must be configured for real x402 payments',
+  }, 503)
 }
 
 export function x402Middleware(price: PriceConfig): MiddlewareHandler {
   if (config.x402Mock) return mockX402Middleware(price)
 
-  if (!config.platformWallet || config.platformWallet === '0x0000000000000000000000000000000000000000') {
-    console.warn('[x402] PLATFORM_WALLET not set — falling back to mock payments. Set PLATFORM_WALLET (and X402_MOCK=false) for real payments.')
-    return mockX402Middleware(price)
-  }
+  if (!hasPlatformWallet()) return unavailableX402Middleware()
   return realX402Middleware(price)
 }

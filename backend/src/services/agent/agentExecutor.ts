@@ -121,10 +121,10 @@ export async function runAgentOnce(
     const { output, tokensUsed, toolCallCount } = await geminiQueue.run(async () => {
       const genAI = new GoogleGenerativeAI(geminiApiKey)
       const toolUse = hasToolUse(agent)
-      // Gemini API: Google Search and Function Calling cannot be combined
+      // Ordinary conversation needs no extra Search quota; use only configured tools.
       const tools = toolUse
         ? [{ functionDeclarations: getToolDeclarations(agent.tools_json) }]
-        : [{ googleSearch: {} }]
+        : undefined
 
       const model = genAI.getGenerativeModel({
         model: resolveModel(agent),
@@ -255,10 +255,10 @@ export function runAgentStream(
         await geminiQueue.run(async () => {
           const genAI = new GoogleGenerativeAI(geminiApiKey)
           const toolUse = hasToolUse(agent)
-          // Gemini API: Google Search and Function Calling cannot be combined
+          // Ordinary conversation needs no extra Search quota; use only configured tools.
           const tools = toolUse
             ? [{ functionDeclarations: getToolDeclarations(agent.tools_json) }]
-            : [{ googleSearch: {} }]
+            : undefined
 
           const model = genAI.getGenerativeModel({
             model: resolveModel(agent),
@@ -392,10 +392,10 @@ export async function chatWithAgent(
   return geminiQueue.run(async () => {
     const genAI = new GoogleGenerativeAI(geminiApiKey)
     const toolUse = hasToolUse(agent)
-    // Gemini API: Google Search and Function Calling cannot be combined
+    // Ordinary conversation needs no extra Search quota; use only configured tools.
     const tools = toolUse
       ? [{ functionDeclarations: getToolDeclarations(agent.tools_json) }]
-      : [{ googleSearch: {} }]
+      : undefined
 
     const model = genAI.getGenerativeModel({
       model: resolveModel(agent),

@@ -7,68 +7,50 @@ export default function HomePage() {
       <section className="home-hero page-width">
         <div className="hero-copy">
           <h1>
-            你的難題，
+            分身有術，
             <br />
-            <em>有人走過。</em>
+            <em>遇事有路。</em>
           </h1>
           <p className="hero-description">
-            把過來人的經驗，
-            <br className="sm:hidden" />
-            用在你自己的情況。
-          </p>
-          <p className="hero-support">
-            選一份達人整理的方法，透過 AI 說明需求、追問細節。從日常到人生轉彎的地方，找到下一步。
+            把達人的經驗，變成你的神隊友。選一份服務，讓 AI
+            帶著過來人的方法，陪你把眼前的問題想清楚。
           </p>
           <Link href="/agents" className="button-primary">
-            找找適合我的服務
+            找我的神隊友
             <Icon />
           </Link>
           <Link href="#how-it-works" className="hero-secondary">
             先看看怎麼使用
           </Link>
         </div>
-        <div className="experience-note">
-          <div className="note-top">
-            <span>每個人的情況，都值得好好想。</span>
-            <Icon name="plus" />
-          </div>
-          <div className="note-scenario">
-            <span>旅行這件事</span>
-            <h2>
-              攻略我看過了，
-              <br />
-              但我家不是
-              <br />
-              範例家庭。
-            </h2>
-          </div>
-          <div className="note-question">
-            <p>
-              「帶爸媽和小孩出門，
-              <br />
-              不開車，也不想天天換飯店。」
-            </p>
-            <span>從你的條件開始說。</span>
-          </div>
-          <div className="note-bottom">
-            <span>一個使用情境</span>
-            <span>經驗，接著用。</span>
-          </div>
+        <div
+          className="hero-ensemble"
+          role="img"
+          aria-label="一份經驗，化成多個分身，接住不同的需要"
+        >
+          <svg viewBox="0 0 520 540" aria-hidden="true">
+            <path
+              className="ensemble-thread"
+              d="M40 420 C110 420 80 140 240 140 S340 430 485 310"
+            />
+            {[0, 1, 2, 3].map((i) => (
+              <g className={`ensemble-person ensemble-person-${i}`} key={i}>
+                <circle cx="260" cy="175" r="42" />
+                <path d="M174 368 V298 C174 188 346 188 346 298 V368" />
+              </g>
+            ))}
+            <path className="ensemble-baseline" d="M44 464 H476" />
+          </svg>
         </div>
       </section>
 
       <section className="possibilities page-width" aria-labelledby="possibilities-title">
         <div className="section-intro">
           <h2 id="possibilities-title">
-            生活裡的大小題，
+            旅行、轉職、生活，
             <br />
-            都能從經驗找線索。
+            經驗各有用武之地。
           </h2>
-          <p>
-            你正在摸索的事，
-            <br />
-            也許正是某位過來人熟悉的日常。
-          </p>
         </div>
         <div className="scenario-list">
           {[
@@ -83,7 +65,6 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <p className="section-footnote">以上為使用情境，實際可用內容以市集已上架的服務為準。</p>
       </section>
 
       <section id="how-it-works" className="how-section">
@@ -123,17 +104,16 @@ export default function HomePage() {
       </section>
 
       <section className="creator-invitation page-width">
-        <p>換你，成為別人的過來人。</p>
+        <h2>
+          換你，成為
+          <br />
+          別人的過來人。
+        </h2>
         <div>
-          <h2>
-            你的經驗，
-            <br />
-            有人正好需要。
-          </h2>
           <p>
-            把判斷方法與案例整理成服務。
+            你有一套，就讓經驗多一條出路。
             <br />
-            讓經驗被使用，也為自己累積收入。
+            把方法整理成 Skill，讓分身接力服務，也為你帶回收入。
           </p>
           <Link href="/agents/new" className="button-secondary">
             上架我的服務

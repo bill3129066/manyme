@@ -47,12 +47,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.56.0
         version: 5.95.2(react@18.3.1)
-      '@x402/evm':
-        specifier: ^2.25.0
-        version: 2.25.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
-      '@x402/fetch':
-        specifier: ^2.25.0
-        version: 2.25.0
       framer-motion:
         specifier: ^12.38.0
         version: 12.43.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1288,9 +1282,6 @@ packages:
 
   '@x402/extensions@2.25.0':
     resolution: {integrity: sha512-7gXpYoHX8CkQ4bwUfzx0GS6VQlx810+GiGOAYhwsbTtIZFt/ahz/5CjCs7qfoKYcgAWcVyvBCl9U3FYYBX01nA==}
-
-  '@x402/fetch@2.25.0':
-    resolution: {integrity: sha512-kpmxnMTjxZJD5r4yVhRDtCrBVfGhum+XwrUUUdffi3Y91eAm9ZiWCDNHLtahOS2kmuzTR2NPbbIoohZQJmQsxg==}
 
   '@x402/hono@2.25.0':
     resolution: {integrity: sha512-wjDY8dW3fY0VsKLkbGWtjqxfYbgRH1lUu+vACRx6jDyy5R6rS0GnHFcenEBvhjKgH1jCzyP32anp4+tRv1S3jg==}
@@ -6294,10 +6285,6 @@ snapshots:
       - ethers
       - typescript
       - utf-8-validate
-
-  '@x402/fetch@2.25.0':
-    dependencies:
-      '@x402/core': 2.25.0
 
   '@x402/hono@2.25.0(bufferutil@4.1.0)(hono@4.12.9)(typescript@5.9.3)(utf-8-validate@6.0.6)':
     dependencies:

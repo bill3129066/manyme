@@ -17,8 +17,8 @@ const bodyFont = Noto_Sans_TC({
 })
 
 export const metadata: Metadata = {
-  title: 'ManyMe 分身有術 — 按需使用達人經驗',
-  description: '讓人們按需使用達人經驗的 AI 服務市集。攻略我看過了,但我家不是範例家庭。',
+  title: '分身有術 — 遇事有路',
+  description: '把達人的經驗，變成你的神隊友。按需使用過來人的方法，陪你想清楚眼前的問題。',
 }
 
 export default function RootLayout({
@@ -54,10 +54,8 @@ export default function RootLayout({
               <div>
                 <Link href="/agents">探索服務</Link>
                 <Link href="/agents/new">上架服務</Link>
-                <Link href="/settings">付款與預算</Link>
-                <Link href="/query">單次查詢</Link>
+                <Link href="/settings">我的錢包</Link>
               </div>
-              <p>目前使用 Base Sepolia 測試網與 test USDC。</p>
             </footer>
           </div>
         </Providers>

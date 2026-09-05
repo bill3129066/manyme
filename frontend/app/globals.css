@@ -292,13 +292,7 @@ summary::marker {
   letter-spacing: -0.035em;
   white-space: nowrap;
 }
-.brand-latin {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  align-self: end;
-  padding-bottom: 6px;
-}
+
 .brand-mark {
   display: flex;
   gap: 3px;
@@ -471,65 +465,7 @@ summary::marker {
   color: #505950;
   text-decoration: underline;
 }
-.experience-note {
-  background: #e8e9dc;
-  padding: 28px 32px 20px;
-  border-top: 5px solid var(--green);
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.note-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: #455b4c;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #bcc3ae;
-}
-.note-top > span:last-child {
-  font-size: 30px;
-  line-height: 1;
-}
-.note-scenario {
-  padding-block: 24px;
-}
-.note-scenario > span {
-  font-size: 13px;
-  color: #455b4c;
-}
-.note-scenario h2 {
-  font-size: clamp(28px, 3vw, 42px);
-  font-weight: 600;
-  line-height: 1.45;
-  letter-spacing: -0.02em;
-  margin-top: 12px;
-}
-.note-question {
-  background: #f5f4e9;
-  padding: 20px;
-  margin-top: auto;
-}
-.note-question p {
-  font-size: 15px;
-}
-.note-question span {
-  display: block;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #5c6656;
-}
-.note-bottom {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  font-size: 11px;
-  color: #455b4c;
-  margin-top: 20px;
-}
+
 .possibilities {
   padding-block: 64px 80px;
   border-top: 1px solid var(--ink);
@@ -622,11 +558,7 @@ summary::marker {
   gap: 8%;
   padding-block: 92px;
 }
-.creator-invitation > p {
-  color: var(--red);
-  padding-top: 12px;
-  font-size: 15px;
-}
+
 .creator-invitation h2 {
   font-size: clamp(34px, 4.5vw, 58px);
   line-height: 1.4;
@@ -968,41 +900,7 @@ summary::marker {
   font-size: 24px;
 }
 /* Legacy administrative forms inherit the same readable foundation. */
-.app-legacy {
-  max-width: 1320px !important;
-  margin-inline: auto;
-  padding: 56px 48px 80px !important;
-}
-.app-legacy h1 {
-  font-size: clamp(32px, 4vw, 52px) !important;
-  line-height: 1.35 !important;
-  font-style: normal !important;
-}
-.app-legacy h2 {
-  line-height: 1.5;
-}
-.app-legacy .italic {
-  font-style: normal;
-}
-.app-legacy .tracking-widest {
-  letter-spacing: 0.02em;
-}
-.app-legacy .text-\[10px\],
-.app-legacy .text-xs {
-  font-size: 13px;
-}
-.app-legacy button {
-  min-height: 44px;
-}
-.app-legacy .mb-24 {
-  margin-bottom: 40px;
-}
-.app-legacy .p-24 {
-  padding: 48px 24px;
-}
-.app-legacy .p-12 {
-  padding: 28px;
-}
+
 .session-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
@@ -1113,9 +1011,7 @@ summary::marker {
     width: calc(100% - 48px);
     gap: 20px;
   }
-  .brand-latin {
-    display: none;
-  }
+
   .nav-links {
     gap: 20px;
   }
@@ -1125,9 +1021,7 @@ summary::marker {
   .hero-copy h1 {
     font-size: clamp(48px, 7vw, 72px);
   }
-  .experience-note {
-    padding: 24px;
-  }
+
   .detail-layout {
     gap: 5%;
   }
@@ -1212,19 +1106,7 @@ summary::marker {
   .hero-secondary {
     margin-top: 14px;
   }
-  .experience-note {
-    margin-top: 40px;
-    padding: 22px;
-  }
-  .note-scenario h2 {
-    font-size: 30px;
-  }
-  .note-top {
-    padding-bottom: 18px;
-  }
-  .note-scenario {
-    padding-block: 20px;
-  }
+
   .possibilities {
     padding-block: 40px 48px;
   }
@@ -1264,9 +1146,7 @@ summary::marker {
     display: block;
     padding-block: 48px;
   }
-  .creator-invitation > p {
-    margin-bottom: 20px;
-  }
+
   .creator-invitation h2 {
     font-size: 38px;
   }
@@ -1339,16 +1219,7 @@ summary::marker {
   .detail-description {
     font-size: 16px;
   }
-  .app-legacy {
-    padding: 32px 20px 56px !important;
-  }
-  .app-legacy .p-8,
-  .app-legacy .p-12 {
-    padding: 20px;
-  }
-  .app-legacy .gap-8 {
-    gap: 20px;
-  }
+
   .session-layout {
     display: flex;
     flex-direction: column;
@@ -1520,7 +1391,331 @@ summary::marker {
   }
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: #697166;
   opacity: 1;
+}
+
+/* A single experience becomes several helping hands. */
+.hero-ensemble {
+  min-width: 0;
+  aspect-ratio: 1;
+}
+.hero-ensemble svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ensemble-person {
+  fill: var(--paper);
+  stroke: var(--red);
+  stroke-width: 20;
+  transform-origin: 260px 420px;
+  animation: experience-unfold 4.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ensemble-person path {
+  fill: none;
+  stroke-linecap: round;
+}
+.ensemble-person-0 {
+  --turn: -29deg;
+  --shift: -58px;
+  stroke: #b6beaa;
+}
+.ensemble-person-1 {
+  --turn: -10deg;
+  --shift: -20px;
+  stroke: var(--green);
+  animation-delay: 0.12s;
+}
+.ensemble-person-2 {
+  --turn: 13deg;
+  --shift: 24px;
+  stroke: #c58965;
+  animation-delay: 0.24s;
+}
+.ensemble-person-3 {
+  --turn: 32deg;
+  --shift: 58px;
+  animation-delay: 0.36s;
+}
+.ensemble-thread {
+  fill: none;
+  stroke: #b6beaa;
+  stroke-width: 2;
+  stroke-dasharray: 1000;
+  animation: experience-thread 4.8s ease both;
+}
+.ensemble-baseline {
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+@keyframes experience-unfold {
+  from {
+    transform: translateX(0) rotate(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(var(--shift)) rotate(var(--turn));
+    opacity: 1;
+  }
+}
+@keyframes experience-thread {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.hero-description {
+  max-width: 26em;
+  font-size: clamp(18px, 1.6vw, 22px);
+  font-weight: 400;
+  line-height: 1.8;
+  margin-bottom: 32px;
+}
+.creator-invitation {
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+}
+.creator-invitation > h2 {
+  font-size: clamp(36px, 4.7vw, 66px);
+  font-weight: 700;
+  color: var(--red);
+}
+.creator-invitation > div > p {
+  font-size: 20px;
+  margin-top: 0;
+}
+.wallet-page {
+  max-width: 920px;
+}
+.wallet-page h1 {
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 700;
+  margin-bottom: 40px;
+}
+.wallet-overview {
+  border-block: 1px solid var(--ink);
+  padding-block: 32px;
+  display: grid;
+  gap: 24px;
+}
+.wallet-overview h2 {
+  font-size: 28px;
+  font-weight: 600;
+}
+.wallet-balance {
+  font-size: clamp(36px, 6vw, 72px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.wallet-balance span {
+  display: block;
+  font-size: 18px;
+  margin-top: 12px;
+}
+.wallet-address {
+  overflow-wrap: anywhere;
+  font-family: monospace;
+  font-size: 14px;
+}
+.wallet-controls,
+.wallet-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+}
+.wallet-destinations {
+  margin-top: 32px;
+}
+@media (max-width: 767px) {
+  .hero-ensemble {
+    max-width: 430px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .creator-invitation {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ensemble-person {
+    animation: none;
+    transform: translateX(var(--shift)) rotate(var(--turn));
+  }
+  .ensemble-thread {
+    animation: none;
+  }
+}
+.skill-guide {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  display: grid;
+  gap: 18px;
+  font-size: 14px;
+}
+.skill-guide h3 {
+  font-size: 20px;
+  font-weight: 600;
+}
+.skill-guide pre {
+  background: #eae5da;
+  padding: 20px;
+  overflow: auto;
+  font-size: 13px;
+}
+.session-destinations {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+}
+.activity-trail {
+  background: #e8e9dc;
+  padding: 24px 28px;
+  margin-bottom: 28px;
+}
+.activity-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.activity-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.activity-heading > span {
+  color: #505950;
+  font-size: 13px;
+}
+.activity-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.activity-dot.is-working {
+  animation: working-pulse 1.6s ease-in-out infinite;
+}
+@keyframes working-pulse {
+  50% {
+    box-shadow: 0 0 0 5px #36564922;
+  }
+}
+.activity-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.activity-events li {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #c9cebd;
+  animation: activity-arrive 0.3s ease-out;
+}
+.activity-events strong,
+.activity-events a {
+  font-weight: 500;
+  font-size: 14px;
+}
+.activity-events a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.activity-events p {
+  font-size: 12px;
+  color: #505950;
+  overflow-wrap: anywhere;
+}
+.activity-events time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #505950;
+}
+.activity-symbol {
+  color: var(--green);
+}
+.activity-empty {
+  color: #505950;
+  font-size: 14px;
+}
+@keyframes activity-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.settlement-dialog {
+  border: 0;
+  padding: 48px;
+  width: min(600px, calc(100% - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+  background: var(--paper);
+  color: var(--ink);
+}
+.settlement-dialog::backdrop {
+  background: #252e2980;
+  backdrop-filter: blur(4px);
+}
+.settlement-dialog h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  margin: 12px 0 20px;
+}
+.dialog-close {
+  display: block;
+  margin-left: auto;
+  min-height: 44px;
+}
+.settlement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  margin-top: 24px;
+}
+@media (max-width: 767px) {
+  .activity-trail {
+    padding: 20px;
+  }
+  .activity-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .settlement-dialog {
+    padding: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .activity-dot.is-working,
+  .activity-events li {
+    animation: none;
+  }
 }

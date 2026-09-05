@@ -59,7 +59,6 @@ export default function AgentsPage() {
       <div className="page-heading">
         <div>
           <h1>找一份，適合你的經驗。</h1>
-          <p>從眼前的問題出發，看看哪份服務能陪你釐清下一步。</p>
         </div>
         <div className="market-tabs" aria-label="服務範圍">
           <button type="button" aria-pressed={tab === 'all'} onClick={() => setTab('all')}>
@@ -188,9 +187,6 @@ export default function AgentsPage() {
               </Link>
             ))}
           </div>
-          <p className="section-footnote">
-            開始前可設定本次預算。費用依使用計算，實際總費率請見服務開始頁與費用明細。
-          </p>
         </>
       )}
     </div>

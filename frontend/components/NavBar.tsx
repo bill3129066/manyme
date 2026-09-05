@@ -33,7 +33,7 @@ export function NavBar() {
             <i />
             <i />
           </span>
-          分身有術<span className="brand-latin">manyme</span>
+          分身有術
         </Link>
         <div className="nav-links">
           {links.map((link) => (
@@ -46,11 +46,10 @@ export function NavBar() {
           <details className="wallet-menu">
             <summary>我的錢包</summary>
             <div className="wallet-panel">
-              <h2>連接錢包，開始使用</h2>
-              <p>瀏覽服務不需連接錢包。付費使用時，再確認本次預算。</p>
+              <h2>我的錢包</h2>
               <ConnectWalletButton />
               <Link href="/settings" className="text-link">
-                錢包與預算設定
+                查看餘額
                 <Icon />
               </Link>
             </div>

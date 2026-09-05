@@ -7,7 +7,7 @@ import { signAction } from '@/lib/sign-action'
 import Link from 'next/link'
 import { Icon } from '@/components/Icon'
 import { displayError } from '@/lib/presentation'
-import { chatInSession, stopSession, rateAgent } from '@/lib/agents-api'
+import { chatInSession, stopSession, rateAgent, fetchAgent } from '@/lib/agents-api'
 
 import Markdown from '@/components/Markdown'
 import type { CostSnapshot } from '@/lib/session-cost'
@@ -47,6 +47,7 @@ export default function SessionPage() {
 
   const [pageError, setPageError] = useState('')
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [sessionAvailable, setSessionAvailable] = useState(false)
   const [clearedHistory, setClearedHistory] = useState<ChatMessage[] | null>(null)
   const [serviceName, setServiceName] = useState('服務對話')
   const [status, setStatus] = useState<'active' | 'paused' | 'stopped'>('active')
@@ -108,6 +109,11 @@ export default function SessionPage() {
       })
       .then((session: any) => {
         if (session.agent_name) setServiceName(session.agent_name)
+        else if (session.agent_id) {
+          void fetchAgent(session.agent_id)
+            .then((agent) => setServiceName(agent.name || '服務對話'))
+            .catch(() => {})
+        }
         if (session.ended_at)
           sessionEndRef.current = new Date(
             session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z'),
@@ -135,6 +141,7 @@ export default function SessionPage() {
           }
           setChatHistory(restored)
         }
+        setSessionAvailable(true)
         setOnchainId(session.onchain_session_id)
         setAccrued(session.accrued_total || 0)
         setCostSnapshot(session.cost_snapshot || null)
@@ -154,7 +161,7 @@ export default function SessionPage() {
   }, [isValidSession, id, router])
 
   useEffect(() => {
-    if (!isValidSession) return
+    if (!isValidSession || !sessionAvailable || status === 'stopped') return
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
     let disposed = false
@@ -278,7 +285,7 @@ export default function SessionPage() {
       clearTimeout(reconnectTimer)
       eventSourceRef.current?.close()
     }
-  }, [id, isValidSession, address, signMessageAsync])
+  }, [id, isValidSession, sessionAvailable, status, address, signMessageAsync])
 
   useEffect(() => {
     if (isValidSession && chatHistory.length > 0) {
@@ -427,7 +434,7 @@ export default function SessionPage() {
           <h1>{serviceName}</h1>
           <p>說說你的情況，也可以接著補充與追問。</p>
         </div>
-        {!sessionLoading && <StreamStatusBadge status={status} />}
+        {sessionAvailable && <StreamStatusBadge status={status} />}
       </div>
       {pageError && (
         <div role="alert" className="notice mb-6">
@@ -438,6 +445,8 @@ export default function SessionPage() {
         <p role="status" className="py-16">
           正在讀取對話與費用紀錄…
         </p>
+      ) : !sessionAvailable ? (
+        <Link href="/sessions" className="button-secondary">查看我的紀錄</Link>
       ) : (
         <>
           <div className="session-mobile-cost">
@@ -500,7 +509,7 @@ export default function SessionPage() {
                   <button
                     className="text-link text-xs"
                     onClick={() => {
-                      setChatHistory(clearedHistory)
+                      setChatHistory((current) => [...clearedHistory, ...current])
                       setClearedHistory(null)
                     }}
                   >

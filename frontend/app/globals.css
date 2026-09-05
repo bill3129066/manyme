@@ -1519,3 +1519,8 @@ summary::marker {
     margin-top: 0;
   }
 }
+
+input::placeholder, textarea::placeholder {
+  color: #697166;
+  opacity: 1;
+}

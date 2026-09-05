@@ -36,7 +36,9 @@ export function ConnectWalletButton() {
               ? '連接測試使用者錢包'
               : connector.name.includes('author')
                 ? '連接測試提供者錢包'
-                : `連接 ${connector.name}`}
+                : connector.id === 'injected'
+                  ? '連接自己的錢包（MetaMask 等）'
+                  : `連接 ${connector.name}`}
           </button>
         ))
       )}

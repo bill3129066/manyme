@@ -179,6 +179,7 @@ export default function AgentDetailPage() {
           <h1>{agent.name}</h1>
           <p className="detail-description">{agent.description}</p>
           <div className="detail-facts">
+            <span>AI 模型：{agent.model}</span>
             <span>{categoryLabel(agent.category)}</span>
             <span>{agent.run_count} 次使用</span>
             <span>{agent.avg_rating ? `評分 ${agent.avg_rating.toFixed(1)} / 5` : '尚無評價'}</span>
@@ -205,7 +206,6 @@ export default function AgentDetailPage() {
                 提供者錢包：
                 <span className="font-mono text-xs break-all">{agent.creator_wallet}</span>
               </p>
-              <p>AI 模型：{agent.model}</p>
               <p>回應變化程度（Temperature）：{agent.temperature}</p>
               <p>回覆長度上限：{agent.max_tokens} tokens</p>
             </div>

@@ -268,7 +268,7 @@ export default function UploadAgentPage() {
 
     const parsed = parseSkillMd(skillMdContent)
     if (!parsed) {
-      setError('Invalid SKILL.md format. Must have --- frontmatter ---')
+      setError('SKILL.md 需要以 --- 包住 name 與 description，再接上指引內容。')
       return
     }
 
@@ -282,7 +282,7 @@ export default function UploadAgentPage() {
       const processedPatterns = [...patternFiles]
 
       if (autoCompress && masterPrompt.length > 3000) {
-        setCompressStatus('Compressing SKILL.md...')
+        setCompressStatus('正在精簡 SKILL.md…')
         const result = await compressContent(masterPrompt, 'skill')
         masterPrompt = result.content
         setCompressStatus(
@@ -291,12 +291,12 @@ export default function UploadAgentPage() {
 
         for (let i = 0; i < processedPatterns.length; i++) {
           if (processedPatterns[i].content.length > 2000) {
-            setCompressStatus(`Compressing ${processedPatterns[i].name}...`)
+            setCompressStatus(`正在精簡 ${processedPatterns[i].name}…`)
             const pr = await compressContent(processedPatterns[i].content, 'pattern')
             processedPatterns[i] = { ...processedPatterns[i], content: pr.content }
           }
         }
-        setCompressStatus('Compression complete. Deploying...')
+        setCompressStatus('精簡完成，正在上架…')
       }
 
       await escrow.prepare()
@@ -448,21 +448,38 @@ export default function UploadAgentPage() {
       </Link>
       <div className="page-heading">
         <div>
-          <h1>把你的經驗，整理成服務。</h1>
-          <p>說清楚你能幫什麼忙，再把判斷方法交給 AI，讓需要的人按需使用。</p>
+          <h1>讓你的經驗，分身上工。</h1>
         </div>
       </div>
       <div className="creator-form-layout">
         <aside>
-          <h2 className="text-xl font-semibold mb-4">從你熟悉的事開始。</h2>
-          <p className="text-sm text-text-secondary">
-            好的服務介紹，讓人知道適不適合自己。好的引導方法，讓 AI
-            知道該先問什麼、如何判斷，以及哪些事做不到。
+          <h2 className="text-xl font-semibold mb-4">你有一套，分身就有招。</h2>
+          <p>
+            Skill 是分身的做事指南：先問什麼、怎麼判斷、何時停下來。把你的眉角寫清楚，AI
+            才知道怎麼接手。
           </p>
-          <div className="technical-details">
-            <p className="text-sm">
-              上架需完成錢包簽署與鏈上登記。你設定每秒收入，平台費會另外列出。
+          <div className="skill-guide">
+            <h3>從零寫，或帶整套來。</h3>
+            <p>
+              「自行填寫」直接撰寫 Skill 指引；已有 Agent Skills
+              資料夾，就選「匯入資料夾」。根目錄的 SKILL.md 要有 name、description 與 Markdown
+              指引。
             </p>
+            <pre>{`my-skill/
+  SKILL.md
+  patterns/  （本站延伸，可選）`}</pre>
+            <p>
+              本站會把其他 Markdown（README.md 除外）各自建立成服務，包含 references
+              裡的文件。請只選擇準備上架的內容；scripts 不會執行，其他附件不會載入。
+            </p>
+            <a
+              className="text-link"
+              href="https://agentskills.io/specification"
+              target="_blank"
+              rel="noreferrer"
+            >
+              查看 Agent Skills 格式與範例 ↗
+            </a>
           </div>
           {!address && (
             <div className="mt-6">
@@ -536,7 +553,7 @@ export default function UploadAgentPage() {
               </div>
               <div>
                 <label className="field-label" htmlFor="service-method">
-                  你的引導方法<span className="text-accent text-xs ml-2">必填</span>
+                  Skill 指引<span className="text-accent text-xs ml-2">必填</span>
                 </label>
                 <textarea
                   id="service-method"
@@ -548,7 +565,7 @@ export default function UploadAgentPage() {
                   placeholder="你會先確認哪些條件？如何比較選項？遇到資訊不足時，該怎麼回應？可以加入案例與能力界線。"
                 />
                 <p className="field-hint">
-                  這段內容會作為 AI 的系統提示詞，決定服務如何回應使用者。
+                  寫下步驟、判斷原則、範例與能力界線。這是 Skill 的核心指引，會用來引導 AI 回應。
                 </p>
               </div>
               <div>

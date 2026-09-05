@@ -7,6 +7,10 @@ import { useRouter } from 'next/navigation'
 import { useEscrowActions } from '@/lib/escrow-actions'
 import { createAgent as saveAgent, compressContent } from '@/lib/agents-api'
 import { signAction } from '@/lib/sign-action'
+import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { ConnectWalletButton } from '@/components/wallet/ConnectWalletButton'
+import { categoryLabel, displayError } from '@/lib/presentation'
 
 /**
  * Parse SKILL.md frontmatter format
@@ -22,7 +26,7 @@ function parseSkillMd(content: string): { name: string; description: string; sys
   const descMatch = frontmatter.match(/description:\s*(.+)/)
 
   return {
-    name: nameMatch?.[1]?.trim() || 'Unnamed Agent',
+    name: nameMatch?.[1]?.trim() || '未命名服務',
     description: descMatch?.[1]?.trim() || '',
     systemPrompt: body.slice(0, 8000),
   }
@@ -67,7 +71,7 @@ export default function UploadAgentPage() {
       if(!response.ok) throw new Error(data.error || 'Unable to load models')
       setModels(data.models)
       setForm(previous => ({...previous, model:data.models.some((model:any)=>model.id===previous.model) ? previous.model : data.models[0].id}))
-    } catch(error:any) { setModelsError(error.message); setModels([]) }
+    } catch(error:any) { setModelsError(displayError(error, '目前無法取得模型清單，請重新載入。')); setModels([]) }
     finally { setModelsLoading(false) }
   }
   useEffect(()=>{void loadModels()},[])
@@ -147,17 +151,17 @@ export default function UploadAgentPage() {
     if (masterContent) {
       processImportedContent(masterContent, newPatterns)
     } else {
-      setError('Directory must contain a SKILL.md file at its root.')
+      setError('資料夾根目錄需要包含 SKILL.md，請重新選擇。')
     }
   }
 
   // Submit manual form
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!address) { setError('Connect wallet first'); return }
-    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('Choose a model from the current catalog');return}
+    if (!address) { setError('請先連接錢包。'); return }
+    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('請選擇目前可用的 AI 模型。');return}
     if (!form.name || !form.description || !form.systemPrompt) {
-      setError('Name, description, and system prompt are required'); return
+      setError('請填寫服務名稱、介紹與引導方法。'); return
     }
     setLoading(true)
     setError('')
@@ -179,7 +183,7 @@ export default function UploadAgentPage() {
       // Auto-compress
       let systemPrompt = form.systemPrompt
       if (autoCompress && systemPrompt.length > 3000) {
-        setCompressStatus('Compressing system prompt...')
+        setCompressStatus('正在精簡引導內容…')
         const result = await compressContent(systemPrompt, 'skill')
         systemPrompt = result.content
         setCompressStatus(`Compression: ${result.original}B -> ${result.compressed}B (${result.ratio})`)
@@ -204,7 +208,7 @@ export default function UploadAgentPage() {
 
       router.push(`/agents/${created.id}`)
     } catch (err: any) {
-      setError(err.message)
+      setError(displayError(err, '上架尚未完成，請確認設定與錢包操作後再試。'))
     } finally {
       setLoading(false)
     }
@@ -213,8 +217,8 @@ export default function UploadAgentPage() {
   // Submit import
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!address) { setError('Connect wallet first'); return }
-    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('Choose a model from the current catalog');return}
+    if (!address) { setError('請先連接錢包。'); return }
+    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('請選擇目前可用的 AI 模型。');return}
 
     const parsed = parseSkillMd(skillMdContent)
     if (!parsed) { setError('Invalid SKILL.md format. Must have --- frontmatter ---'); return }
@@ -300,295 +304,45 @@ export default function UploadAgentPage() {
 
       router.push(`/agents/${createdAgentId}`)
     } catch (err: any) {
-      setError(err.message)
+      setError(displayError(err, '上架尚未完成，請確認設定與錢包操作後再試。'))
     } finally {
       setLoading(false)
     }
   }
 
-  const inputCls = 'w-full bg-surface-dim border border-border-subtle px-4 py-3 text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none text-sm transition-colors'
-  const labelCls = 'block text-xs uppercase tracking-widest font-bold text-text-secondary mb-3'
-
-  const pricePreview = (value: string) => <p className="text-sm text-text-secondary mt-3">
-    You earn {Number(value || 0).toFixed(6)} USDC/sec. Platform: {(PLATFORM_FEE / 1_000_000).toFixed(6)}. Buyer total: {(Number(value || 0) + PLATFORM_FEE / 1_000_000).toFixed(6)} USDC/sec.
-    {Number(value) === 0 && ' Your rate is zero: these sessions generate no claimable curator earnings.'}
-  </p>
-  const modelPicker = <div>
-    <label htmlFor="agent-model" className={labelCls}>Model</label>
-    <select id="agent-model" value={form.model} onChange={update('model')} disabled={modelsLoading || !models.length} className={inputCls}>
-      {!models.length && <option value="">{modelsLoading ? 'Loading current models…' : 'Models unavailable'}</option>}
-      {models.map(model=><option key={model.id} value={model.id}>{model.label}{model.preview && !/preview/i.test(model.label) ? ' (Preview)' : ''}</option>)}
-    </select>
-    <p className="text-sm text-text-secondary mt-2">Current Gemini text models. Generation depends on your API quota and provider availability.</p>
-    <button type="button" onClick={()=>void loadModels()} disabled={modelsLoading} className="text-sm underline mt-2">Refresh models</button>
-    {modelsError && <p role="alert" className="text-red-500 mt-2">{modelsError}</p>}
+  const categories=['general','research','defi','trading','nft','security']
+  const pricePreview=(value:string)=><p className="field-hint">你每秒收入 {Number(value||0).toFixed(6)} USDC，加上平台費 {(PLATFORM_FEE/1e6).toFixed(6)} USDC，使用者每秒合計 {(Number(value||0)+PLATFORM_FEE/1e6).toFixed(6)} USDC。{Number(value)===0&&'你的費率為零時，這份服務不會產生可領收入。'}</p>
+  const modelPicker=<div className="form-group"><label htmlFor="agent-model" className="field-label">AI 模型</label><select id="agent-model" value={form.model} onChange={update('model')} disabled={modelsLoading||!models.length} className="field-input">{!models.length&&<option value="">{modelsLoading?'正在載入可用模型…':'目前沒有可用模型'}</option>}{models.map(model=><option key={model.id} value={model.id}>{model.label}</option>)}</select><p className="field-hint">依目前可用的 Gemini 模型提供；能否生成回覆取決於 API 額度與供應狀況。</p><button className="text-link text-sm mt-2" type="button" disabled={modelsLoading} onClick={()=>void loadModels()}>重新載入模型</button>{modelsError&&<p role="alert" className="notice mt-3">{modelsError}</p>}</div>
+  const compression=<div className="py-5 border-y border-border-subtle"><label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={autoCompress} onChange={e=>setAutoCompress(e.target.checked)} className="w-5 h-5 accent-accent" />精簡過長的引導內容</label><p className="field-hint">上架時協助壓縮內容，減少傳送給模型的文字量。</p>{compressStatus&&<p role="status" className="text-sm text-accent mt-2">{compressStatus}</p>}</div>
+  return <div className="page-width page-section">
+    <Link href="/studio" className="breadcrumb"><Icon name="back" />回到達人工作室</Link>
+    <div className="page-heading"><div><h1>把你的經驗，整理成服務。</h1><p>說清楚你能幫什麼忙，再把判斷方法交給 AI，讓需要的人按需使用。</p></div></div>
+    <div className="creator-form-layout"><aside><h2 className="text-xl font-semibold mb-4">從你熟悉的事開始。</h2><p className="text-sm text-text-secondary">好的服務介紹，讓人知道適不適合自己。好的引導方法，讓 AI 知道該先問什麼、如何判斷，以及哪些事做不到。</p><div className="technical-details"><p className="text-sm">上架需完成錢包簽署與鏈上登記。你設定每秒收入，平台費會另外列出。</p></div>{!address&&<div className="mt-6"><p className="field-label">準備上架時，連接錢包</p><ConnectWalletButton /></div>}</aside>
+    <div><div className="market-tabs mb-8" aria-label="上架方式"><button type="button" aria-pressed={mode==='manual'} onClick={()=>setMode('manual')}>自行填寫</button><button type="button" aria-pressed={mode==='import'} onClick={()=>setMode('import')}>匯入資料夾</button></div>
+    {mode==='manual'?<form className="space-y-7" onSubmit={handleManualSubmit}>
+      <div><label className="field-label" htmlFor="service-name">服務名稱<span className="text-accent text-xs ml-2">必填</span></label><input id="service-name" className="field-input" required value={form.name} onChange={update('name')} placeholder="例如：陪你整理轉職履歷" /></div>
+      <div><label className="field-label" htmlFor="service-description">這份服務能幫什麼忙？<span className="text-accent text-xs ml-2">必填</span></label><textarea id="service-description" className="field-input" required rows={3} value={form.description} onChange={update('description')} placeholder="說明適合的對象、能協助的問題，以及你的方法特色。" /></div>
+      <div><label className="field-label" htmlFor="service-category">服務分類</label><select id="service-category" value={form.category} onChange={update('category')} className="field-input">{categories.map(cat=><option key={cat} value={cat}>{categoryLabel(cat)}</option>)}</select></div>
+      <div><label className="field-label" htmlFor="service-method">你的引導方法<span className="text-accent text-xs ml-2">必填</span></label><textarea id="service-method" className="field-input" required rows={9} value={form.systemPrompt} onChange={update('systemPrompt')} placeholder="你會先確認哪些條件？如何比較選項？遇到資訊不足時，該怎麼回應？可以加入案例與能力界線。" /><p className="field-hint">這段內容會作為 AI 的系統提示詞，決定服務如何回應使用者。</p></div>
+      <div><label className="field-label" htmlFor="service-rate">你每秒希望取得的收入（USDC）</label><input id="service-rate" type="number" min="0" step="0.000001" required value={form.ratePerSecond} onChange={update('ratePerSecond')} className="field-input" />{pricePreview(form.ratePerSecond)}</div>
+      {modelPicker}
+      <details className="technical-details"><summary>進階設定：需求欄位與回應參數</summary><div className="space-y-6">
+        <div><label className="field-label" htmlFor="prompt-template">使用者需求範本</label><textarea id="prompt-template" className="field-input" rows={3} value={form.userPromptTemplate} onChange={update('userPromptTemplate')} onBlur={detectVariables} placeholder="請依照 {{query}} 提供引導。" /><p className="field-hint">使用 {'{{變數}}'}，離開欄位後會自動加入需求欄位。</p></div>
+        <div><div className="flex justify-between items-center gap-4"><h3 className="font-semibold">使用者需要填寫的欄位</h3><button type="button" className="text-link text-sm" onClick={addInputField}>新增欄位<Icon name="plus" /></button></div>{inputFields.map((field,i)=><div key={i} className="border-b border-border-subtle py-4 space-y-3"><input className="field-input" aria-label={`第 ${i+1} 個欄位名稱`} value={field.name} onChange={e=>updateField(i,'name',e.target.value)} placeholder="欄位名稱" /><div className="flex flex-wrap gap-4 items-center"><select aria-label={`第 ${i+1} 個欄位類型`} className="field-input !w-auto" value={field.type} onChange={e=>updateField(i,'type',e.target.value)}><option value="text">文字</option><option value="number">數字</option><option value="select">選項（以文字輸入）</option></select><label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={field.required} onChange={e=>updateField(i,'required',e.target.checked)} />必填</label><button type="button" className="text-link text-sm" aria-label={`移除第 ${i+1} 個欄位`} onClick={()=>removeField(i)}>移除</button></div></div>)}{!inputFields.length&&<p className="field-hint mt-4">未設定時，使用者會直接輸入一段需求。</p>}</div>
+        <div><label className="field-label" htmlFor="temperature">回應變化程度（Temperature）：{form.temperature}</label><input id="temperature" type="range" value={form.temperature} onChange={update('temperature')} min="0" max="2" step="0.1" className="w-full accent-accent" /></div>
+        <div><label className="field-label" htmlFor="max-tokens">回覆長度上限（tokens）</label><input id="max-tokens" type="number" min="128" max="8192" step="128" value={form.maxTokens} onChange={update('maxTokens')} className="field-input" /></div>
+        <div><label className="field-label" htmlFor="metadata-url">服務中繼資料網址（選填）</label><input id="metadata-url" type="url" value={form.metadataUri} onChange={update('metadataUri')} placeholder="https://" className="field-input" /></div>
+      </div></details>
+      {compression}{error&&<p className="notice" role="alert">{error}</p>}
+      <button className="button-primary w-full" type="submit" disabled={loading||modelsLoading||!models.length||!address}>{loading?'正在處理上架…':!address?'請先連接錢包':'確認設定，上架服務'}<Icon /></button>
+    </form>:<form onSubmit={handleImportSubmit} className="space-y-7">
+      <div className="import-zone"><label htmlFor="skill-folder" className="field-label text-xl">選擇服務資料夾</label><p className="text-sm text-text-secondary mb-5">根目錄需包含 SKILL.md。patterns 資料夾內的 Markdown 會各自建立服務。</p>
+      {/* @ts-ignore directory selection is supported by Chromium and Safari */}
+      <input id="skill-folder" type="file" webkitdirectory="" directory="" onChange={handleDirectoryUpload} className="text-sm w-full" /></div>
+      {importPreview&&<section className="py-5 border-y border-border-subtle"><h2 className="text-xl font-semibold">{importPreview.name}</h2><p className="text-sm text-text-secondary my-3">{importPreview.description}</p><p className="text-sm">將建立 1 份主要服務與 {importPreview.patterns.length} 份延伸服務，共 {1+importPreview.patterns.length} 份。</p></section>}
+      <div><label className="field-label" htmlFor="import-category">服務分類</label><select id="import-category" value={importCategory} onChange={e=>setImportCategory(e.target.value)} className="field-input">{categories.map(cat=><option key={cat} value={cat}>{categoryLabel(cat)}</option>)}</select></div>
+      <div><label className="field-label" htmlFor="import-rate">每秒收入（USDC）</label><input className="field-input" id="import-rate" type="number" min="0" step="0.000001" required value={importPrice} onChange={e=>setImportPrice(e.target.value)} />{pricePreview(importPrice)}</div>
+      {modelPicker}{compression}{error&&<p role="alert" className="notice">{error}</p>}<button className="button-primary w-full" type="submit" disabled={loading||modelsLoading||!models.length||!address||!skillMdContent}>{loading?'正在匯入與上架…':!address?'請先連接錢包':`確認匯入 ${importPreview?1+patternFiles.length:0} 份服務`}<Icon /></button>
+    </form>}</div></div>
   </div>
-
-  return (
-    <div className="min-h-screen bg-background text-text-primary">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-8 lg:px-24 py-24">
-        <div className="mb-16 border-b border-border-strong pb-8">
-          <h1 className="font-display text-6xl font-bold tracking-tight mb-4">
-            Upload Agent
-          </h1>
-          <p className="text-text-secondary text-2xl italic max-w-3xl">
-            Deploy a new autonomous agent to the marketplace.
-          </p>
-        </div>
-
-        {/* Mode Toggle */}
-        <div className="flex gap-4 mb-16 border-b border-border-subtle">
-          <button type="button" onClick={() => setMode('manual')}
-            className={`pb-3 text-xs uppercase tracking-widest font-bold transition-colors ${
-              mode === 'manual' 
-                ? 'text-text-primary border-b-2 border-text-primary' 
-                : 'text-text-tertiary hover:text-text-primary'
-            }`}>
-            Manual Config
-          </button>
-          <button type="button" onClick={() => setMode('import')}
-            className={`pb-3 text-xs uppercase tracking-widest font-bold transition-colors ${
-              mode === 'import' 
-                ? 'text-text-primary border-b-2 border-text-primary' 
-                : 'text-text-tertiary hover:text-text-primary'
-            }`}>
-            Import Directory
-          </button>
-        </div>
-
-        <div className="max-w-3xl">
-        {mode === 'import' ? (
-          /* ===== IMPORT MODE ===== */
-          <form onSubmit={handleImportSubmit} className="space-y-8">
-            {modelPicker}
-            {/* Directory Upload */}
-            <div className="group border border-border-strong p-12 bg-surface-elevated relative overflow-hidden text-center hover:border-accent transition-colors cursor-pointer">
-              <label className="block cursor-pointer relative z-10">
-                <div className="w-16 h-16 mx-auto border border-border-strong flex items-center justify-center text-text-primary mb-6 group-hover:bg-surface-dim group-hover:border-accent transition-all">
-                  <span className="material-symbols-outlined text-2xl">folder_open</span>
-                </div>
-                <h3 className="text-text-primary font-display font-bold text-2xl mb-3 italic">Upload Skill Directory</h3>
-                <p className="text-sm text-text-secondary">
-                  Auto-parses SKILL.md and multiple sub-agents from patterns/*.md
-                </p>
-                {/* @ts-ignore */}
-                <input type="file" webkitdirectory="" directory="" onChange={handleDirectoryUpload} className="hidden" />
-              </label>
-            </div>
-
-            {/* Preview */}
-            {importPreview && (
-              <div className="bg-surface-elevated border border-border-subtle p-8 mt-8">
-                <h3 className="text-xs font-bold text-accent mb-4 tracking-widest uppercase flex items-center gap-2">
-                  <span className="w-2 h-2 bg-accent inline-block animate-pulse" />
-                  Target Preview
-                </h3>
-                <p className="text-2xl font-display font-bold text-text-primary mb-2 italic">{importPreview.name}</p>
-                <p className="text-sm text-text-secondary mb-6 leading-relaxed max-w-2xl">{importPreview.description}</p>
-                <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold text-text-tertiary">
-                  <span className="px-3 py-1 bg-surface-dim border border-border-subtle text-text-secondary">1 Core</span>
-                  {importPreview.patterns.length > 0 && (
-                    <>
-                      <span>+</span>
-                      <span className="px-3 py-1 bg-surface-dim border border-border-subtle text-text-secondary">{importPreview.patterns.length} Sub-agents</span>
-                    </>
-                  )}
-                  <span>=</span>
-                  <span className="text-text-primary">{1 + importPreview.patterns.length} Total</span>
-                </div>
-              </div>
-            )}
-
-            {/* Auto-compress toggle */}
-            <div className="flex items-center gap-4 py-4 border-y border-border-subtle mt-8">
-              <label className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold text-text-secondary cursor-pointer">
-                <input type="checkbox" checked={autoCompress} onChange={e => setAutoCompress(e.target.checked)}
-                  className="w-4 h-4 border border-border-strong checked:bg-text-primary appearance-none cursor-pointer flex items-center justify-center checked:after:content-['✓'] checked:after:text-surface-elevated checked:after:text-[10px]" />
-                Enable Prompt Compression
-              </label>
-              {compressStatus && (
-                <span className="text-xs text-accent uppercase tracking-widest font-bold bg-surface-dim px-3 py-1">
-                  {compressStatus}
-                </span>
-              )}
-            </div>
-
-            {/* Category + Price */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-              <div>
-                <label className={labelCls}>Category</label>
-                <select value={importCategory} onChange={e => setImportCategory(e.target.value)} className={inputCls}>
-                  <option value="general">General</option>
-                  <option value="defi">DeFi</option>
-                  <option value="trading">Trading</option>
-                  <option value="research">Research</option>
-                  <option value="nft">NFT</option>
-                  <option value="security">Security</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Your curator rate (USDC/sec)</label>
-                <input type="number" value={importPrice} onChange={e => setImportPrice(e.target.value)}
-                  min="0" step="0.000001" className={inputCls} />
-                {pricePreview(importPrice)}
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-surface-dim border border-error/50 text-error p-4 text-sm font-bold mt-8">
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading || modelsLoading || !models.length || !address || !skillMdContent}
-              className="w-full mt-12 bg-text-primary text-surface-elevated font-bold tracking-widest py-4 px-8 text-xs uppercase transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? 'Executing...' : !address ? 'Connect Wallet' : `Deploy Agents (${importPreview ? 1 + patternFiles.length : 0})`}
-            </button>
-          </form>
-        ) : (
-          /* ===== MANUAL MODE ===== */
-          <form onSubmit={handleManualSubmit} className="space-y-8">
-
-            <div>
-              <label className={labelCls}>Agent Name <span className="text-accent">*</span></label>
-              <input value={form.name} onChange={update('name')} required placeholder="e.g. Data Scraper" className={inputCls} />
-            </div>
-
-            <div>
-              <label className={labelCls}>Description <span className="text-accent">*</span></label>
-              <textarea value={form.description} onChange={update('description')} required rows={3}
-                placeholder="Primary function of this agent..." className={`${inputCls} resize-none`} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <label className={labelCls}>Category</label>
-                <select value={form.category} onChange={update('category')} className={inputCls}>
-                  <option value="general">General</option>
-                  <option value="defi">DeFi</option>
-                  <option value="trading">Trading</option>
-                  <option value="research">Research</option>
-                  <option value="nft">NFT</option>
-                  <option value="security">Security</option>
-                </select>
-              </div>
-              {modelPicker}
-            </div>
-
-            <div>
-              <label className={labelCls}>System Prompt <span className="text-accent">*</span></label>
-              <textarea value={form.systemPrompt} onChange={update('systemPrompt')} required rows={6}
-                placeholder="You are an autonomous agent deployed to..."
-                className={`${inputCls} resize-none`} />
-            </div>
-
-            <div className="bg-surface-elevated border border-border-subtle p-8">
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-xs uppercase tracking-widest font-bold text-text-primary">
-                  User Prompt Template
-                </label>
-                <span className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Use {'{{variable}}'} to auto-generate inputs</span>
-              </div>
-              <textarea value={form.userPromptTemplate} onChange={update('userPromptTemplate')} rows={3}
-                placeholder="Analyze {{target}} using {{parameters}}"
-                onBlur={detectVariables}
-                className={`${inputCls} resize-none bg-surface-dim`} />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className={labelCls}>Input Parameters</label>
-                <button type="button" onClick={addInputField}
-                  className="text-xs uppercase tracking-widest font-bold text-text-primary hover:text-accent transition-colors">
-                  + Add Parameter
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                {inputFields.map((field, i) => (
-                  <div key={i} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-surface-elevated p-4 border border-border-subtle">
-                    <input value={field.name} onChange={e => updateField(i, 'name', e.target.value)}
-                      placeholder="Variable Name"
-                      className="flex-1 bg-surface-dim border border-border-subtle px-4 py-2 text-text-primary text-sm focus:border-accent outline-none w-full sm:w-auto" />
-                    <select value={field.type} onChange={e => updateField(i, 'type', e.target.value)}
-                      className="bg-surface-dim border border-border-subtle px-4 py-2 text-text-primary text-sm focus:border-accent outline-none w-full sm:w-auto">
-                      <option value="text">Text</option>
-                      <option value="number">Number</option>
-                      <option value="select">Select</option>
-                    </select>
-                    <div className="flex items-center justify-between w-full sm:w-auto gap-4">
-                      <label className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-text-secondary">
-                        <input type="checkbox" checked={field.required}
-                          onChange={e => updateField(i, 'required', e.target.checked)} 
-                          className="w-4 h-4 border border-border-strong checked:bg-text-primary appearance-none cursor-pointer flex items-center justify-center checked:after:content-['✓'] checked:after:text-surface-elevated checked:after:text-[10px]" />
-                        Required
-                      </label>
-                      <button type="button" onClick={() => removeField(i)}
-                        className="text-text-tertiary hover:text-error text-xl font-bold transition-colors">&times;</button>
-                    </div>
-                  </div>
-                ))}
-                {inputFields.length === 0 && (
-                  <p className="text-sm text-text-tertiary italic p-4 border border-border-subtle border-dashed text-center">No input parameters defined.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div>
-                <label className={labelCls}>Temperature: {form.temperature}</label>
-                <div className="relative pt-2">
-                  <input type="range" value={form.temperature} onChange={update('temperature')}
-                    min="0" max="2" step="0.1" 
-                    className="w-full h-1 bg-border-strong appearance-none accent-text-primary cursor-pointer outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className={labelCls}>Max Tokens</label>
-                <input type="number" value={form.maxTokens} onChange={update('maxTokens')}
-                  min="128" max="8192" step="128" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Your curator rate (USDC/sec)</label>
-                <input type="number" value={form.ratePerSecond} onChange={update('ratePerSecond')}
-                  min="0" step="0.000001" className={inputCls} />
-                {pricePreview(form.ratePerSecond)}
-              </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>Metadata URL</label>
-              <input type="url" value={form.metadataUri} onChange={update('metadataUri')}
-                placeholder="https://github.com/..." className={inputCls} />
-            </div>
-
-            <div className="flex items-center gap-4 py-4 border-y border-border-subtle mt-8">
-              <label className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold text-text-secondary cursor-pointer">
-                <input type="checkbox" checked={autoCompress} onChange={e => setAutoCompress(e.target.checked)}
-                  className="w-4 h-4 border border-border-strong checked:bg-text-primary appearance-none cursor-pointer flex items-center justify-center checked:after:content-['✓'] checked:after:text-surface-elevated checked:after:text-[10px]" />
-                Enable Prompt Compression
-              </label>
-              {compressStatus && (
-                <span className="text-xs text-accent uppercase tracking-widest font-bold bg-surface-dim px-3 py-1">
-                  {compressStatus}
-                </span>
-              )}
-            </div>
-
-            {error && (
-              <div className="bg-surface-dim border border-error/50 text-error p-4 text-sm font-bold mt-8">
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading || modelsLoading || !models.length || !address}
-              className="w-full mt-12 bg-text-primary text-surface-elevated font-bold tracking-widest py-4 px-8 text-xs uppercase transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? 'Deploying...' : !address ? 'Connect Wallet' : 'Deploy Agent'}
-            </button>
-          </form>
-        )}
-        </div>
-      </div>
-    </div>
-  )
 }

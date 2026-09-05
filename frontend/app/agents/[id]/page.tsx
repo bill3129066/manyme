@@ -8,6 +8,10 @@ import {
   fetchBalance, depositFunds, fetchAgentStats,
 } from '@/lib/agents-api'
 import { signAction } from '@/lib/sign-action'
+import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { ConnectWalletButton } from '@/components/wallet/ConnectWalletButton'
+import { categoryLabel, displayError } from '@/lib/presentation'
 
 interface Agent {
   onchain_agent_id: number | null; id: string; name: string; description: string; category: string
@@ -18,7 +22,7 @@ interface Agent {
   creator_wallet: string; created_at: string
 }
 
-interface InputField { name: string; type: string; required: boolean }
+interface InputField { name: string; label: string; type: string; required: boolean }
 
 function parseInputSchema(schemaJson: string | null): InputField[] {
   if (!schemaJson) return []
@@ -27,14 +31,14 @@ function parseInputSchema(schemaJson: string | null): InputField[] {
     const props = schema.properties || {}
     const required: string[] = schema.required || []
     return Object.entries(props).map(([name, def]: [string, any]) => ({
-      name, type: def.type === 'number' ? 'number' : 'text', required: required.includes(name),
+      name, label: def.title || ({query:'你的需求', _query:'你的需求'} as Record<string,string>)[name] || name, type: def.type === 'number' ? 'number' : 'text', required: required.includes(name),
     }))
   } catch { return [] }
 }
 
 function formatRate(microPerSec: number): string {
-  if (microPerSec === 0) return 'Free'
-  return `$${(microPerSec / 1_000_000).toFixed(4)}/sec`
+  if (microPerSec === 0) return '0 USDC／秒'
+  return `${(microPerSec / 1_000_000).toFixed(4)} USDC／秒`
 }
 
 export default function AgentDetailPage() {
@@ -56,7 +60,7 @@ export default function AgentDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    fetchAgent(id).then(a => { setAgent(a); setLoading(false) }).catch(() => { setError('Agent not found'); setLoading(false) })
+    fetchAgent(id).then(a => { setAgent(a); setLoading(false) }).catch(() => { setError('目前找不到這份服務，請回到列表選擇其他服務。'); setLoading(false) })
   }, [id])
 
   useEffect(() => {
@@ -71,9 +75,9 @@ export default function AgentDetailPage() {
     setError('')
     setStarting(true)
     try {
-      if(agent.onchain_agent_id==null)throw new Error('This agent is not registered on-chain. Publish a new agent to start an escrow session.')
+      if(agent.onchain_agent_id==null)throw new Error('這份服務尚未完成鏈上登記，目前無法開始使用。請選擇其他服務。')
       const deposit=Math.round(Number(budget)*1000000)
-      if(!Number.isFinite(deposit)||deposit<100000||deposit>10000000)throw new Error('Choose a budget from 0.1 to 10 test USDC')
+      if(!Number.isFinite(deposit)||deposit<100000||deposit>10000000)throw new Error('請設定 0.1 至 10 test USDC 的服務預算。')
       await escrow.prepare()
       const auth = await signAction(signMessageAsync, address, 'create-session')
       const txHash=await escrow.create(agent.onchain_agent_id,deposit)
@@ -84,7 +88,7 @@ export default function AgentDetailPage() {
       }
       router.push(`/sessions/${session.id}`)
     } catch (e: any) {
-      setError(e.message || 'Failed to start session')
+      setError(displayError(e, '服務尚未開始，請確認錢包操作後再試。'))
       setStarting(false)
     }
   }
@@ -96,105 +100,32 @@ export default function AgentDetailPage() {
       const result = await rateAgent(id, rating, auth)
       setUserRating(rating)
       if (agent) setAgent({ ...agent, avg_rating: result.avg_rating })
-    } catch {}
+    } catch (e) { setError(displayError(e, '評分尚未送出，請再試一次。')) }
   }
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-text-secondary font-display">Loading...</p></div>
-  if (!agent) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-red-400 font-display">{error || 'Agent not found'}</p></div>
-
+  if (loading) return <div className="page-width page-section" role="status">正在載入服務介紹…</div>
+  if (!agent) return <div className="page-width page-section"><div className="empty-state"><h1 className="text-2xl mb-4">{error || '目前找不到這份服務'}</h1><Link href="/agents" className="text-link">回到服務列表<Icon name="back" /></Link></div></div>
   const fields = parseInputSchema(agent.input_schema_json)
-  const hasFields = fields.length > 0
-
-  return (
-    <div className="min-h-screen bg-background text-text-primary">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-8 lg:px-24 py-24">
-        {/* Header */}
-        <div className="mb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="px-3 py-1 text-xs uppercase tracking-widest font-bold bg-surface-dim text-text-tertiary border border-border-subtle">{agent.category}</span>
-            <span className="text-text-secondary text-sm font-mono">{agent.run_count} runs</span>
-          </div>
-          <h1 className="font-display text-6xl font-bold mb-6 tracking-tight leading-none">{agent.name}</h1>
-          <p className="text-text-secondary text-2xl mb-8 leading-relaxed max-w-3xl">{agent.description}</p>
-          <div className="flex items-center gap-8 text-sm uppercase tracking-widest text-text-tertiary border-t border-border-subtle pt-6 max-w-3xl">
-            <span className="text-accent font-bold text-base">{formatRate(agent.rate_per_second)}</span>
-            <span>by {agent.creator_wallet.slice(0,6)}...{agent.creator_wallet.slice(-4)}</span>
-            <span>{agent.model}</span>
-            {agent.avg_rating && <span className="text-text-secondary">★ {agent.avg_rating.toFixed(1)}</span>}
-          </div>
-        </div>
-
-        {/* Input Form */}
-        <div className="border border-border-strong p-12 mb-12 bg-surface-elevated max-w-3xl">
-          <h2 className="font-display text-3xl font-bold mb-8 italic">Session Inputs</h2>
-          {hasFields ? fields.map(field => (
-            <div key={field.name} className="mb-8">
-              <label htmlFor={`field-${field.name}`} className="block text-xs uppercase tracking-widest font-bold text-text-secondary mb-3">{field.name}{field.required && <span className="text-accent ml-1">*</span>}</label>
-              <input id={`field-${field.name}`} type={field.type} value={inputs[field.name] || ''} onChange={e => setInputs(prev => ({ ...prev, [field.name]: e.target.value }))}
-                className="w-full px-4 py-3 bg-surface-dim border border-border-subtle text-text-primary text-sm focus:border-accent focus:outline-none transition-colors" />
-            </div>
-          )) : (
-            <div className="mb-8">
-              <label htmlFor="field-query" className="block text-xs uppercase tracking-widest font-bold text-text-secondary mb-3">Query</label>
-              <textarea id="field-query" value={inputs._query || ''} onChange={e => setInputs({ _query: e.target.value })} rows={4}
-                className="w-full px-4 py-3 bg-surface-dim border border-border-subtle text-text-primary text-sm focus:border-accent focus:outline-none resize-none transition-colors" placeholder="What would you like the agent to analyze?" />
-            </div>
-          )}
-
-          <div className="mt-8">
-            <label htmlFor="session-budget" className="block text-sm mb-2">Session budget (Base Sepolia USDC)</label>
-            <input id="session-budget" type="number" min="0.1" max="10" step="0.1" value={budget} onChange={e=>setBudget(e.target.value)} className="bg-surface-dim border border-border-subtle px-4 py-3 text-base" />
-            <p className="text-sm text-text-secondary mt-2">Unused USDC is refunded when you stop the session.</p>
-          </div>
-          <div className="flex items-center gap-6 mt-12 pt-8 border-t border-border-subtle">
-            <button type="button" onClick={handleStartSession} disabled={!address || starting}
-              className="px-8 py-3 bg-text-primary text-surface-elevated text-xs uppercase tracking-widest font-bold transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed">
-              {starting ? 'Starting...' : address ? 'Start Session' : 'Connect Wallet'}
-            </button>
-            {error && <p role="alert" className="text-red-500">{error}</p>}
-            {balance !== null && (
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <span className="font-mono">Balance: ${(balance / 1_000_000).toFixed(2)}</span>
-                <span>Base Sepolia USDC</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Model Info */}
-        <div className="border border-border-subtle p-8 text-sm text-text-secondary max-w-3xl bg-surface-dim">
-          <div className="grid grid-cols-3 gap-8">
-            <div><span className="text-xs uppercase tracking-widest text-text-tertiary mb-2 block">Model</span><span className="font-bold text-text-primary">{agent.model}</span></div>
-            <div><span className="text-xs uppercase tracking-widest text-text-tertiary mb-2 block">Temperature</span><span className="font-bold text-text-primary">{agent.temperature}</span></div>
-            <div><span className="text-xs uppercase tracking-widest text-text-tertiary mb-2 block">Max Tokens</span><span className="font-bold text-text-primary">{agent.max_tokens}</span></div>
-          </div>
-        </div>
-
-        {/* Rating — only for connected wallets, collapsed by default */}
-        {address && (
-          <div className="mt-12 max-w-3xl">
-            {showRating ? (
-              <div className="border border-border-subtle bg-surface-elevated p-6 flex items-center gap-6">
-                <span className="text-xs uppercase tracking-widest text-text-secondary font-bold">Rate this agent</span>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button key={star} type="button" onClick={() => handleRate(star)} onMouseEnter={() => setRatingHover(star)} onMouseLeave={() => setRatingHover(0)}
-                      className={`text-2xl transition-colors ${(ratingHover || userRating || 0) >= star ? 'text-accent' : 'text-border-strong'}`}>★</button>
-                  ))}
-                </div>
-                {userRating && <span className="text-xs uppercase tracking-widest text-text-tertiary">Your rating: {userRating}/5</span>}
-                {!userRating && agent.avg_rating && <span className="text-xs uppercase tracking-widest text-text-tertiary">Avg: {agent.avg_rating.toFixed(1)}</span>}
-                <button type="button" onClick={() => setShowRating(false)} className="ml-auto text-text-tertiary hover:text-text-primary text-sm transition-colors">&times;</button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => setShowRating(true)}
-                className="text-xs uppercase tracking-widest text-text-tertiary hover:text-text-secondary transition-colors">
-                {userRating ? `Your rating: ${'★'.repeat(userRating)}${'☆'.repeat(5 - userRating)}` : 'Rate this agent →'}
-              </button>
-            )}
-          </div>
-        )}
+  return <div className="page-width page-section">
+    <Link href="/agents" className="breadcrumb"><Icon name="back" />回到服務列表</Link>
+    <div className="detail-layout">
+      <div className="detail-intro">
+        <h1>{agent.name}</h1><p className="detail-description">{agent.description}</p>
+        <div className="detail-facts"><span>{categoryLabel(agent.category)}</span><span>{agent.run_count} 次使用</span><span>{agent.avg_rating ? `評分 ${agent.avg_rating.toFixed(1)} / 5` : '尚無評價'}</span></div>
+        <div className="detail-explainer"><h2>從你的情況開始，接著問下去。</h2><p>這份服務由提供者設定方法與內容，AI 依照設定回應。說明你想處理的問題、已知條件，使用中也可以繼續補充與追問。</p></div>
+        <div className="detail-explainer"><h2>費用，你可以先設上限。</h2><p>服務費率為 <strong className="text-text-primary">{formatRate(agent.rate_per_second)}</strong>。開始後依使用計費，結束時由合約結算，未用完的預算退回錢包。請在離開前結束服務。</p></div>
+        <details className="technical-details"><summary>查看提供者與技術設定</summary><div className="space-y-3 break-words"><p>提供者錢包：<span className="font-mono text-xs break-all">{agent.creator_wallet}</span></p><p>AI 模型：{agent.model}</p><p>回應變化程度（Temperature）：{agent.temperature}</p><p>回覆長度上限：{agent.max_tokens} tokens</p></div></details>
+        {address && <div className="mt-6">{showRating ? <div><span className="text-sm">你覺得這份服務如何？</span><div className="rating-buttons">{[1,2,3,4,5].map(star=><button type="button" key={star} aria-label={`${star} 分`} aria-pressed={userRating===star} onClick={()=>handleRate(star)} onMouseEnter={()=>setRatingHover(star)} onMouseLeave={()=>setRatingHover(0)} className={(ratingHover||userRating||0)>=star?'text-accent':'text-text-tertiary'}>★</button>)}</div>{userRating && <p role="status" className="text-sm text-text-secondary">已收到你的 {userRating} 分評價。</p>}<button className="text-link text-sm" onClick={()=>setShowRating(false)}>收起評分</button></div>:<button className="text-link text-sm" onClick={()=>setShowRating(true)}>{userRating?`你的評分：${userRating} / 5`:'留下你的評分'}</button>}</div>}
       </div>
+      <form className="service-form" onSubmit={e=>{e.preventDefault();void handleStartSession()}}>
+        <h2>這次，想解決什麼？</h2><p>說得具體一點，服務才能從你的情況出發。</p>
+        {fields.length ? fields.map(field=><div className="form-group" key={field.name}><label htmlFor={`field-${field.name}`} className="field-label">{field.label}{field.required && <span className="text-accent text-xs ml-2">必填</span>}</label><input className="field-input" id={`field-${field.name}`} type={field.type} required={field.required} value={inputs[field.name]||''} onChange={e=>setInputs(prev=>({...prev,[field.name]:e.target.value}))} /></div>) : <div className="form-group"><label htmlFor="field-query" className="field-label">你的需求<span className="text-accent text-xs ml-2">必填</span></label><textarea id="field-query" required className="field-input" value={inputs._query||''} onChange={e=>setInputs({_query:e.target.value})} rows={5} placeholder="我想要…，目前的情況是…，最在意的是…" /><p className="field-hint">可以補充背景、限制，以及希望服務幫你釐清的問題。</p></div>}
+        <div className="form-group border-t border-border-strong pt-6"><label className="field-label" htmlFor="session-budget">本次服務預算上限</label><div className="budget-field"><input id="session-budget" type="number" required min="0.1" max="10" step="0.1" value={budget} onChange={e=>setBudget(e.target.value)} /><span>test USDC</span></div><p className="field-hint">可設定 0.1–10 test USDC。這是使用服務的預算，未使用金額於結束時退回。</p>{balance!==null && <p className="field-hint">錢包可用餘額：{(balance/1e6).toFixed(4)} test USDC</p>}</div>
+        {!address && <div className="form-group"><p className="field-label">連接錢包，再確認開始</p><ConnectWalletButton /></div>}
+        {error && <p role="alert" className="notice mt-5">{error}</p>}
+        <button type="submit" className="button-primary" disabled={!address||starting}>{starting?'正在確認錢包與建立服務…':'確認預算，開始使用'}{!starting&&<Icon />}</button>
+        <p className="field-hint mt-4" role="status">{starting?'請依錢包提示完成簽署與交易，完成後會進入對話。':'目前使用 Base Sepolia 測試網。開始時需透過錢包授權並存入本次預算。'}</p>
+      </form>
     </div>
-  )
+  </div>
 }

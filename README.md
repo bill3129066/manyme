@@ -49,6 +49,15 @@ Gemini 處理達人服務的回應，SQLite 保存服務設定與對話紀錄，
 Base Sepolia 合約處理預算、計費、退款與收入。鏈上活動證明記錄服務活動，
 不保證回答正確。[架構與程式碼導讀](docs/ARCHITECTURE.md) 從一次旅行諮詢串起各段程式。
 
+## 鏈上合約地址
+
+目前展示使用 Base Sepolia（chain ID `84532`）：
+
+| 用途 | 合約 | 地址 |
+| --- | --- | --- |
+| 預算託管、計費、退款與收入 | `ManyMeEscrow` | [`0x5dbdf1ba2dda688aeb6913ba81901c8d8d1cc476`](https://sepolia.basescan.org/address/0x5dbdf1ba2dda688aeb6913ba81901c8d8d1cc476) |
+| 測試 USDC 支付代幣 | `Circle USDC` | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) |
+
 ## 使用技術
 
 | 類型 | 技術／服務 | 用途 |

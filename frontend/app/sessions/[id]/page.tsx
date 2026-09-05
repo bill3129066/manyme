@@ -1,4 +1,5 @@
 'use client'
+import { useEscrowActions } from '@/lib/escrow-actions'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
@@ -10,11 +11,10 @@ import ProofHeartbeatTimeline from '@/components/session/ProofHeartbeatTimeline'
 import AgentWorkTimeline from '@/components/session/AgentWorkTimeline'
 import StreamStatusBadge from '@/components/session/StreamStatusBadge'
 import CostBreakdown from '@/components/session/CostBreakdown'
-import MagiConsensusEngine from '@/components/session/MagiConsensusEngine'
 
 interface ChatMessage {
   id: string
-  role: 'user' | 'model'
+  role: 'user' | 'model' | 'error'
   text: string
 }
 
@@ -35,6 +35,8 @@ interface ProofEvent {
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const escrow=useEscrowActions()
+  const [onchainId,setOnchainId]=useState<number|null>(null)
   const { address } = useAccount()
   const { signMessageAsync } = useSignMessage()
 
@@ -89,6 +91,8 @@ export default function SessionPage() {
     fetch(`${apiBase}/api/sessions/${id}`)
       .then(r => r.json())
       .then((session: any) => {
+        setOnchainId(session.onchain_session_id)
+        setAccrued(session.accrued_total || 0)
         if (session.total_rate) setRatePerSec(session.total_rate)
         if (session.curator_rate) setCuratorRate(session.curator_rate)
         if (session.platform_fee) setPlatformFee(session.platform_fee)
@@ -102,14 +106,6 @@ export default function SessionPage() {
       })
       .catch(() => {})
   }, [isValidSession, id, router])
-
-  useEffect(() => {
-    if (!isValidSession || status !== 'active') return
-    const interval = setInterval(() => {
-      setAccrued(prev => prev + ratePerSec)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isValidSession, status, ratePerSec])
 
   useEffect(() => {
     if (!isValidSession) return
@@ -133,13 +129,13 @@ export default function SessionPage() {
         })
         setChatLoading(true)
 
-        chatInSession(id, initialQuery, [])
+        ;(async()=>{if(!address)throw new Error('Connect your session wallet'); const auth=await signAction(signMessageAsync,address,'chat-session',id);return chatInSession(id,initialQuery,[],auth)})()
           .then(({ reply, toolCallCount: tc }) => {
             setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: reply }])
             if (tc) setToolCallCount(prev => prev + tc)
           })
           .catch((err) => {
-            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: `Error: ${err.message}` }])
+            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${err.message}` }])
           })
           .finally(() => setChatLoading(false))
       })
@@ -195,7 +191,7 @@ export default function SessionPage() {
         const data = (e as MessageEvent).data
         if (!data) return
         const { error } = JSON.parse(data)
-        setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: `Error: ${error}` }])
+        setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${error}` }])
         setChatLoading(false)
       })
 
@@ -207,7 +203,7 @@ export default function SessionPage() {
 
     connect()
     return () => eventSourceRef.current?.close()
-  }, [id, isValidSession])
+  }, [id, isValidSession, address, signMessageAsync])
 
   useEffect(() => {
     if (isValidSession && chatHistory.length > 0) {
@@ -220,6 +216,9 @@ export default function SessionPage() {
     if (!address) return
     setIsActionLoading(true)
     try {
+      if(onchainId==null)throw new Error('Session has no on-chain identifier')
+      await escrow.stop(onchainId)
+      await escrow.refund(onchainId)
       const auth = await signAction(signMessageAsync, address, 'stop-session', id)
       await stopSession(id, auth)
       setStatus('stopped')
@@ -231,6 +230,15 @@ export default function SessionPage() {
       setIsActionLoading(false)
     }
   }
+
+  // Close escrow after a failed generation; the backend also stops proof renewal.
+  const failureCloseAttempted = useRef(false)
+  const hasChatError = chatHistory.some(message => message.role === 'error')
+  useEffect(() => {
+    if (!hasChatError || status === 'stopped' || !address || onchainId == null || failureCloseAttempted.current) return
+    failureCloseAttempted.current = true
+    void handleStop()
+  }, [hasChatError, status, address, onchainId])
 
   const sessionDuration = () => {
     const secs = Math.floor((Date.now() - sessionStartRef.current) / 1000)
@@ -263,12 +271,14 @@ export default function SessionPage() {
     setChatLoading(true)
 
     try {
-      const geminiHistory = nextHistory.slice(0, -1).map(m => ({
+      const geminiHistory = nextHistory.slice(0, -1).filter((m): m is ChatMessage & { role: 'user' | 'model' } => m.role !== 'error').map(m => ({
         role: m.role,
         parts: [{ text: m.text }],
       }))
       
-      const { reply, toolCallCount: newToolCount } = await chatInSession(id, text, geminiHistory)
+      if(!address)throw new Error('Connect your session wallet')
+      const auth=await signAction(signMessageAsync,address,'chat-session',id)
+      const { reply, toolCallCount: newToolCount } = await chatInSession(id, text, geminiHistory,auth)
       
       setChatHistory(prev => {
         const next = [...prev]
@@ -284,7 +294,7 @@ export default function SessionPage() {
         setToolCallCount(prev => prev + newToolCount)
       }
     } catch (e: any) {
-      setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: `Failed to reach AI: ${e.message}` }])
+      setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Failed to reach AI: ${e.message}` }])
     } finally {
       setChatLoading(false)
     }
@@ -295,7 +305,7 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="max-w-[1920px] mx-auto px-24 pt-24 pb-32">
+    <div className="max-w-[1920px] mx-auto px-6 lg:px-24 pt-12 lg:pt-24 pb-32">
       <div className="flex items-end justify-between border-b border-border-strong pb-8 mb-16">
         <div>
           <h1 className="text-[3rem] font-display italic leading-none mb-2">Live Session</h1>
@@ -304,7 +314,7 @@ export default function SessionPage() {
         <StreamStatusBadge status={status} />
       </div>
 
-      <MagiConsensusEngine />
+
 
       <div className="grid grid-cols-12 gap-8 items-start">
         <div className="col-span-3 space-y-8">

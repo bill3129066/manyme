@@ -110,11 +110,11 @@ export async function compressContent(content: string, type: string): Promise<an
 }
 
 // Sessions
-export async function createSession(agentId: string, inputs: Record<string, string>, auth: AuthHeaders): Promise<{ id: string }> {
+export async function createSession(agentId: string, inputs: Record<string, string>, auth: AuthHeaders, txHash: string): Promise<{ id: string }> {
   const res = await fetch(`${API}/api/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },
-    body: JSON.stringify({ agentId, inputs }),
+    body: JSON.stringify({ agentId, inputs, txHash }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

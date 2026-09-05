@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { useRouter } from 'next/navigation'
-import { createAgent, compressContent } from '@/lib/agents-api'
+import { useEscrowActions } from '@/lib/escrow-actions'
+import { createAgent as saveAgent, compressContent } from '@/lib/agents-api'
 import { signAction } from '@/lib/sign-action'
 
 /**
@@ -26,6 +27,11 @@ function parseSkillMd(content: string): { name: string; description: string; sys
 }
 
 export default function UploadAgentPage() {
+  const escrow=useEscrowActions()
+  const createAgent=async(data:any,auth:any)=>{
+    const registrationTxHash=await escrow.register(data.ratePerSecond || 0,data.metadataUri || data.name)
+    return saveAgent({...data,registrationTxHash},auth)
+  }
   const { address } = useAccount()
   const { signMessageAsync } = useSignMessage()
   const router = useRouter()

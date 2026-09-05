@@ -17,7 +17,7 @@ export const NETWORK_CONFIGS: Record<number, NetworkConfig> = {
   // Base Sepolia (testnet)
   [baseSepolia.id]: {
     usdcAddress:   '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Circle USDC on Base Sepolia
-    escrowAddress: '0x0000000000000000000000000000000000000000', // redeploy escrow on Base Sepolia
+    escrowAddress: (process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`,
     explorerUrl:   'https://sepolia.basescan.org',
     label: 'Base Sepolia',
   },

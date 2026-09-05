@@ -1,4 +1,5 @@
 'use client'
+import { useEscrowActions } from '@/lib/escrow-actions'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
@@ -9,7 +10,7 @@ import {
 import { signAction } from '@/lib/sign-action'
 
 interface Agent {
-  id: string; name: string; description: string; category: string
+  onchain_agent_id: number | null; id: string; name: string; description: string; category: string
   system_prompt: string; user_prompt_template: string | null
   model: string; temperature: number; max_tokens: number
   input_schema_json: string | null; rate_per_second: number
@@ -38,6 +39,7 @@ function formatRate(microPerSec: number): string {
 
 export default function AgentDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const escrow=useEscrowActions()
   const { address } = useAccount()
   const { signMessageAsync } = useSignMessage()
   const router = useRouter()
@@ -50,6 +52,7 @@ export default function AgentDetailPage() {
   const [ratingHover, setRatingHover] = useState(0)
   const [showRating, setShowRating] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [budget,setBudget]=useState('1')
 
   useEffect(() => {
     if (!id) return
@@ -57,8 +60,9 @@ export default function AgentDetailPage() {
   }, [id])
 
   useEffect(() => {
+    setBalance(null)
     if (!address) return
-    fetchBalance(address).then(b => setBalance(b.balance)).catch(() => {})
+    escrow.balance().then(setBalance).catch(() => {})
     if (id) fetchUserRating(id, address).then(r => setUserRating(r)).catch(() => {})
   }, [address, id])
 
@@ -66,8 +70,12 @@ export default function AgentDetailPage() {
     if (!address || !agent) return
     setStarting(true)
     try {
+      if(agent.onchain_agent_id==null)throw new Error('This agent is not registered on-chain. Publish a new agent to start an escrow session.')
+      const deposit=Math.round(Number(budget)*1000000)
+      if(!Number.isFinite(deposit)||deposit<100000||deposit>10000000)throw new Error('Choose a budget from 0.1 to 10 test USDC')
+      const txHash=await escrow.create(agent.onchain_agent_id,deposit)
       const auth = await signAction(signMessageAsync, address, 'create-session')
-      const session = await createSession(agent.id, inputs, auth)
+      const session = await createSession(agent.id, inputs, auth, txHash)
       const queryText = inputs._query || inputs.query || Object.values(inputs).join(' ')
       if (queryText) {
         sessionStorage.setItem(`session_query_${session.id}`, queryText)
@@ -86,15 +94,6 @@ export default function AgentDetailPage() {
       const result = await rateAgent(id, rating, auth)
       setUserRating(rating)
       if (agent) setAgent({ ...agent, avg_rating: result.avg_rating })
-    } catch {}
-  }
-
-  const handleDeposit = async () => {
-    if (!address) return
-    try {
-      const auth = await signAction(signMessageAsync, address, 'deposit')
-      const result = await depositFunds(10_000_000, auth)
-      setBalance(result.balance)
     } catch {}
   }
 
@@ -140,6 +139,11 @@ export default function AgentDetailPage() {
             </div>
           )}
 
+          <div className="mt-8">
+            <label htmlFor="session-budget" className="block text-sm mb-2">Session budget (Base Sepolia USDC)</label>
+            <input id="session-budget" type="number" min="0.1" max="10" step="0.1" value={budget} onChange={e=>setBudget(e.target.value)} className="bg-surface-dim border border-border-subtle px-4 py-3 text-base" />
+            <p className="text-sm text-text-secondary mt-2">Unused USDC is refunded when you stop the session.</p>
+          </div>
           <div className="flex items-center gap-6 mt-12 pt-8 border-t border-border-subtle">
             <button type="button" onClick={handleStartSession} disabled={!address || starting}
               className="px-8 py-3 bg-text-primary text-surface-elevated text-xs uppercase tracking-widest font-bold transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed">
@@ -148,7 +152,7 @@ export default function AgentDetailPage() {
             {balance !== null && (
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <span className="font-mono">Balance: ${(balance / 1_000_000).toFixed(2)}</span>
-                <button type="button" onClick={handleDeposit} className="text-accent hover:underline text-xs">+$10</button>
+                <span>Base Sepolia USDC</span>
               </div>
             )}
           </div>

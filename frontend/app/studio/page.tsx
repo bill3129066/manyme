@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useAccount } from 'wagmi'
+import { signAction } from '@/lib/sign-action'
+import { useAccount, useSignMessage } from 'wagmi'
 import Link from 'next/link'
 import { fetchAgents } from '@/lib/agents-api'
 
@@ -8,20 +9,45 @@ export default function StudioPage() {
   const { address } = useAccount()
   const [agents, setAgents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const { signMessageAsync } = useSignMessage()
+  const [earnings,setEarnings]=useState<{totalEarned:number;pendingPayout:number;sessions:any[]}>({totalEarned:0,pendingPayout:0,sessions:[]})
+  const [payoutPending,setPayoutPending]=useState(false)
+  const [error,setError]=useState('')
+  const [payoutTx,setPayoutTx]=useState('')
+  const api=process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  async function refreshEarnings(wallet:string) {
+    const response=await fetch(`${api}/api/curator/${wallet}/earnings`)
+    if(!response.ok)throw new Error('Unable to load earnings')
+    setEarnings(await response.json())
+  }
+  async function claimPayout() {
+    if(!address)return
+    setPayoutPending(true);setError('')
+    try {
+      const auth=await signAction(signMessageAsync,address,'payout')
+      const response=await fetch(`${api}/api/curator/payout`,{method:'POST',headers:{'Content-Type':'application/json',...auth},body:'{}'})
+      const result=await response.json()
+      if(!response.ok)throw new Error(result.error || 'Payout failed')
+      setPayoutTx(result.txHash)
+      await refreshEarnings(address)
+    }catch(e:any){setError(e.message)}finally{setPayoutPending(false)}
+  }
 
   useEffect(() => {
     if (!address) {
-      setLoading(false)
+      setLoading(false);setAgents([]);setEarnings({totalEarned:0,pendingPayout:0,sessions:[]})
       return
     }
+    setLoading(true)
+    refreshEarnings(address).catch(e=>setError(e.message))
     fetchAgents({ creator: address })
       .then(setAgents)
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [address])
 
-  const totalEarned = 0 // Will be populated from settlement service
-  const pendingPayout = 0
+  const totalEarned = earnings.totalEarned / 1000000
+  const pendingPayout = earnings.pendingPayout / 1000000
 
   return (
     <div className="bg-background min-h-screen text-text-primary font-sans">
@@ -69,6 +95,8 @@ export default function StudioPage() {
           </Link>
         </header>
 
+        {error && <p role="alert" className="text-error mb-6">{error}</p>}
+        {payoutTx && <p role="status" className="mb-6">Payout confirmed. <a className="underline" href={`https://sepolia.basescan.org/tx/${payoutTx}`} target="_blank" rel="noreferrer">View transaction</a></p>}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border-strong mb-24 bg-surface-elevated">
           <div className="p-12 border-b md:border-b-0 md:border-r border-border-strong relative">
             <p className="text-text-secondary text-xs uppercase tracking-widest font-bold mb-4">Total Earned</p>
@@ -88,6 +116,7 @@ export default function StudioPage() {
             <p className="font-display text-5xl md:text-6xl text-text-primary tracking-tight font-bold">
               <span className="text-text-tertiary mr-2 font-sans font-light">$</span>{pendingPayout.toFixed(4)}
             </p>
+            <button type="button" disabled={!address || pendingPayout<=0 || payoutPending} onClick={claimPayout} className="mt-6 border border-border-strong px-4 py-3 disabled:opacity-40">{payoutPending?'Confirming payout…':'Claim earnings'}</button>
           </div>
         </div>
 
@@ -161,7 +190,7 @@ export default function StudioPage() {
                         </span>
                         <span className="text-text-secondary text-sm flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px] text-text-tertiary">account_balance_wallet</span>
-                          <span className="font-bold uppercase tracking-widest text-xs">$0.0000 EARNED</span>
+                          <span className="font-bold uppercase tracking-widest text-xs">${(earnings.sessions.filter(s=>s.agent_id===agent.id).reduce((total,s)=>total+s.earned_amount,0)/1000000).toFixed(4)} EARNED</span>
                         </span>
                       </div>
                     </div>

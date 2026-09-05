@@ -82,12 +82,13 @@ Copyright ConsenSys Software Inc. 2022. All rights reserved.
 
 | 素材 | 來源 | 授權與使用方式 |
 | --- | --- | --- |
-| Inter | [Inter / Google Fonts](https://github.com/google/fonts/tree/main/ofl/inter) | [SIL OFL 1.1](docs/licenses/Inter-OFL.txt)，由 `next/font/google` 載入 |
-| Newsreader | [Newsreader / Google Fonts](https://github.com/google/fonts/tree/main/ofl/newsreader) | [SIL OFL 1.1](docs/licenses/Newsreader-OFL.txt)，由 `next/font/google` 載入 |
+| Noto Sans TC | [Google Fonts](https://github.com/google/fonts/tree/main/ofl/notosanstc) | [SIL OFL 1.1](docs/licenses/Noto-Sans-TC-OFL.txt)，由 `next/font/google` 自行託管，作為繁體中文主字型 |
+| Inter（舊版） | [Inter / Google Fonts](https://github.com/google/fonts/tree/main/ofl/inter) | [SIL OFL 1.1](docs/licenses/Inter-OFL.txt)，由 `next/font/google` 載入 |
+| Newsreader（舊版） | [Newsreader / Google Fonts](https://github.com/google/fonts/tree/main/ofl/newsreader) | [SIL OFL 1.1](docs/licenses/Newsreader-OFL.txt)，由 `next/font/google` 載入 |
 | Material Symbols Outlined | [Google Material Design Icons](https://github.com/google/material-design-icons) | [Apache-2.0](docs/licenses/Material-Symbols-Apache-2.0.txt)，由 Google Fonts CSS 載入 |
 
 載入位置為 [`frontend/app/layout.tsx`](frontend/app/layout.tsx)。
-目前 Git 追蹤的前端沒有另附照片或外部圖片檔；Studio 的點陣背景是程式內嵌 SVG。
+目前 Git 追蹤的前端沒有另附照片或外部圖片檔；新版品牌記號與操作圖示是專案自行繪製的幾何 SVG。
 之後加入截圖、照片、影片或其他素材時，應同步更新此表。
 
 ## 外部服務與條款

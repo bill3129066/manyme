@@ -18,17 +18,17 @@ export default function SalaryTicker({ accrued, ratePerSec, status, snapshot }: 
   }, [accrued, ratePerSec, status, snapshot])
 
   return (
-    <div className="border border-border-subtle p-8 bg-surface-elevated">
-      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-4">{status === 'active' ? 'Estimated Session Cost' : 'Session Cost'}</p>
+    <div className="border-t-2 border-text-primary py-6">
+      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-4">{status === 'active' ? '目前估計費用' : '本次費用'}</p>
       <div 
-        className={`text-6xl font-display font-bold transition-colors ${
+        className={`text-4xl font-display font-bold transition-colors ${
           status === 'active' ? 'text-accent' : 'text-text-tertiary'
         }`}
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
         {formatUSDC(displayValue)}
       </div>
-      <p className="text-sm text-text-secondary mt-3">{status === 'active' ? 'Updates live within the funded proof window. Final cost is settled on Base.' : 'Settled on Base Sepolia.'}</p>
+      <p className="text-sm text-text-secondary mt-3">{status === 'active' ? 'USDC · 依有效活動時間更新' : 'USDC · Base Sepolia 結算'}</p>
       <div className="flex items-center gap-3 mt-6">
         <div 
           className={`w-2 h-2 ${
@@ -37,7 +37,7 @@ export default function SalaryTicker({ accrued, ratePerSec, status, snapshot }: 
           style={status === 'active' ? { animation: 'breathe 2s ease-in-out infinite' } : {}}
         />
         <span className="text-xs uppercase tracking-widest text-text-secondary">
-          {status === 'active' ? `${formatUSDC(ratePerSec)}/sec` : status}
+          {status === 'active' ? `${formatUSDC(ratePerSec)} USDC／秒` : '服務已停止'}
         </span>
       </div>
     </div>

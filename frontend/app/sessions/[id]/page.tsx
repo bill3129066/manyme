@@ -4,6 +4,9 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
 import { signAction } from '@/lib/sign-action'
+import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { displayError } from '@/lib/presentation'
 import { chatInSession, stopSession, rateAgent } from '@/lib/agents-api'
 
 import Markdown from '@/components/Markdown'
@@ -42,6 +45,10 @@ export default function SessionPage() {
   const { address } = useAccount()
   const { signMessageAsync } = useSignMessage()
 
+  const [pageError, setPageError] = useState('')
+  const [sessionLoading,setSessionLoading] = useState(true)
+  const [clearedHistory,setClearedHistory] = useState<ChatMessage[]|null>(null)
+  const [serviceName,setServiceName] = useState('服務對話')
   const [status, setStatus] = useState<'active' | 'paused' | 'stopped'>('active')
   const [steps, setSteps] = useState<AgentStep[]>([])
   const [proofs, setProofs] = useState<ProofEvent[]>([])
@@ -93,8 +100,9 @@ export default function SessionPage() {
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
     fetch(`${apiBase}/api/sessions/${id}`)
-      .then(r => r.json())
+      .then(r => { if(!r.ok) throw new Error('Unable to load session'); return r.json() })
       .then((session: any) => {
+        if (session.agent_name) setServiceName(session.agent_name)
         if (session.ended_at) sessionEndRef.current = new Date(session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
         if (session.steps) setSteps(session.steps)
         if (session.proofs) setProofs(session.proofs)
@@ -122,7 +130,8 @@ export default function SessionPage() {
           sessionStartRef.current = new Date(session.started_at).getTime()
         }
       })
-      .catch(() => {})
+      .catch(() => setPageError('目前無法讀取這次服務，請重新整理頁面。'))
+      .finally(() => setSessionLoading(false))
   }, [isValidSession, id, router])
 
   useEffect(() => {
@@ -156,7 +165,7 @@ export default function SessionPage() {
             if (tc) setToolCallCount(prev => prev + tc)
           })
           .catch((err) => {
-            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${err.message}` }])
+            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: displayError(err, '回覆未能完成，請結束本次服務並確認結算。') }])
           })
           .finally(() => setChatLoading(false))
       })
@@ -214,7 +223,7 @@ export default function SessionPage() {
         const data = (e as MessageEvent).data
         if (!data) return
         const { error } = JSON.parse(data)
-        setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${error}` }])
+        setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: displayError(error, '回覆未能完成，請結束本次服務並確認結算。') }])
         setChatLoading(false)
       })
 
@@ -232,11 +241,13 @@ export default function SessionPage() {
     if (isValidSession && chatHistory.length > 0) {
       localStorage.setItem(`chat_${id}`, JSON.stringify(chatHistory))
     }
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const area = chatBottomRef.current?.parentElement
+    if(area) area.scrollTop = area.scrollHeight
   }, [chatHistory, id, isValidSession])
 
   const handleStop = async () => {
     if (!address) return
+    setPageError('')
     setIsActionLoading(true)
     try {
       if(onchainId==null)throw new Error('Session has no on-chain identifier')
@@ -255,7 +266,7 @@ export default function SessionPage() {
       eventSourceRef.current?.close()
       setShowReview(true)
     } catch (e: any) {
-      alert(`Failed to stop: ${e.message}`)
+      setPageError(displayError(e, '結束或退款尚未完成，請確認錢包狀態後再次操作。'))
     } finally {
       setIsActionLoading(false)
     }
@@ -287,12 +298,13 @@ export default function SessionPage() {
       setRatingSubmitted(true)
     } catch {
       setReviewRating(0)
+      setPageError('評分尚未送出，請稍後再試。')
     }
   }
 
   async function sendMessage() {
     const text = chatInput.trim()
-    if (!text || chatLoading) return
+    if (!text || chatLoading || status !== 'active') return
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', text }
     const nextHistory = [...chatHistory, userMsg]
@@ -324,7 +336,7 @@ export default function SessionPage() {
         setToolCallCount(prev => prev + newToolCount)
       }
     } catch (e: any) {
-      setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Failed to reach AI: ${e.message}` }])
+      setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: displayError(e, '回覆未能完成，請結束本次服務並確認結算。') }])
     } finally {
       setChatLoading(false)
     }
@@ -334,226 +346,26 @@ export default function SessionPage() {
     return null
   }
 
-  return (
-    <div className="max-w-[1920px] mx-auto px-6 lg:px-24 pt-12 lg:pt-24 pb-32">
-      <div className="flex items-end justify-between border-b border-border-strong pb-8 mb-16">
-        <div>
-          <h1 className="text-[3rem] font-display italic leading-none mb-2">Live Session</h1>
-          <p className="text-text-secondary text-sm font-mono break-all">#{id}</p>
+  return <div className="page-width page-section session-page">
+    <Link href="/sessions" className="breadcrumb"><Icon name="back" />回到我的紀錄</Link>
+    <div className="page-heading"><div><h1>{serviceName}</h1><p>說說你的情況，也可以接著補充與追問。</p></div>{!sessionLoading&&<StreamStatusBadge status={status} />}</div>
+    {pageError&&<div role="alert" className="notice mb-6">{pageError}</div>}
+    {sessionLoading ? <p role="status" className="py-16">正在讀取對話與費用紀錄…</p> : <>
+    <div className="session-mobile-cost"><span>{status==='stopped'?'結算費用':'已確認費用'}：{(accrued/1e6).toFixed(4)} USDC</span>{status!=='stopped'&&<button onClick={handleStop} disabled={!address||isActionLoading}>{isActionLoading?'正在結束與退款…':'結束並結算'}</button>}</div>
+    {showReview&&<section className="notice mb-6" aria-label="結算結果"><div className="flex flex-wrap justify-between gap-4"><div><h2 className="text-xl font-semibold">這次服務已結束，結算完成。</h2><p>最終費用 {(accrued/1e6).toFixed(4)} USDC · 使用時間 {sessionDuration()}。對話仍可在這裡查看。</p></div><button onClick={()=>setShowReview(false)}>收起</button></div>{address&&agentId&&<div className="mt-4"><p>這次的服務對你有幫助嗎？</p>{ratingSubmitted?<p role="status">謝謝，你的 {reviewRating} 分評價已送出。</p>:<div className="rating-buttons">{[1,2,3,4,5].map(star=><button key={star} type="button" aria-label={`評分 ${star} 分`} onClick={()=>handleRateAgent(star)} onMouseEnter={()=>setRatingHover(star)} onMouseLeave={()=>setRatingHover(0)} className={(ratingHover||reviewRating)>=star?'text-accent':'text-text-secondary'}>★</button>)}</div>}</div>}</section>}
+    <div className="session-layout">
+      <section className="session-chat" aria-label="與服務對話">
+        <div className="session-chat-header"><span>這次的討論</span>{clearedHistory?<button className="text-link text-xs" onClick={()=>{setChatHistory(clearedHistory);setClearedHistory(null)}}>復原清除</button>:<button className="text-link text-xs" disabled={!chatHistory.length||chatLoading} onClick={()=>{setClearedHistory(chatHistory);setChatHistory([])}}>清除畫面</button>}</div>
+        <div className="chat-messages" role="log" aria-label="對話內容" aria-live="polite">
+          {chatHistory.length===0&&<div className="py-12 text-text-secondary"><h2 className="text-xl mb-3 text-text-primary">從你最在意的問題開始。</h2><p className="text-sm">說明背景、希望達成的事，以及目前遇到的限制。</p></div>}
+          {chatHistory.map(msg=><div key={msg.id} className={`chat-message chat-message-${msg.role}`}><p className="message-speaker">{msg.role==='user'?'你':msg.role==='error'?'服務提示':'AI 回覆'}</p>{msg.role==='model'?<Markdown>{msg.text}</Markdown>:<p className="whitespace-pre-wrap break-words">{msg.text}</p>}</div>)}
+          {chatLoading&&<p className="text-sm text-text-secondary" role="status">正在整理回覆，請稍候…</p>}<div ref={chatBottomRef} />
         </div>
-        <StreamStatusBadge status={status} />
-      </div>
-
-
-
-      <div className="grid grid-cols-12 gap-8 items-start">
-        <div className="col-span-12 lg:col-span-3 min-w-0 space-y-8">
-          <SalaryTicker accrued={accrued} ratePerSec={ratePerSec} status={status} snapshot={costSnapshot} />
-          <CostBreakdown curatorRate={curatorRate} platformFee={platformFee} />
-        </div>
-
-        <div className="col-span-12 lg:col-span-6 min-w-0 h-full min-h-[40rem]">
-          <AgentWorkTimeline steps={steps} />
-        </div>
-
-        <div className="col-span-12 lg:col-span-3 min-w-0 h-full max-h-[40rem]">
-          <ProofHeartbeatTimeline proofs={proofs} />
-        </div>
-      </div>
-
-      <div className="mt-16 border border-border-subtle bg-surface-elevated flex flex-col h-[36rem] overflow-hidden shadow-2xl shadow-black/5">
-        <div className="flex items-center justify-between px-6 pt-4 pb-3 border-b border-border-subtle bg-surface">
-          <p className="text-xs text-text-tertiary uppercase tracking-widest font-bold">
-            Chat with Agent
-          </p>
-          <button type="button" onClick={() => setChatHistory([])} className="text-xs uppercase tracking-widest font-bold text-text-tertiary hover:text-text-primary transition-colors">
-            Clear Chat
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 bg-surface-elevated">
-          {chatHistory.length === 0 && (
-            <p className="text-text-tertiary text-sm italic font-display text-center py-12">Ask the agent anything about the current session...</p>
-          )}
-          {chatHistory.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-full md:max-w-[85%] px-6 py-4 text-sm ${
-                msg.role === 'user'
-                  ? 'bg-surface-dim text-text-primary border border-border-strong font-medium'
-                  : 'bg-surface text-text-secondary border border-border-subtle'
-              }`}>
-                {msg.role === 'model' ? <Markdown>{msg.text}</Markdown> : <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>}
-              </div>
-            </div>
-          ))}
-          {chatLoading && (
-            <div className="flex justify-start">
-              <div className="bg-surface text-text-tertiary border border-border-subtle px-6 py-4 text-sm">
-                <span className="flex items-center gap-3 font-medium uppercase tracking-widest text-[10px]">
-                  <span className="w-3 h-3 border-2 border-border-strong border-t-accent animate-spin" />
-                  Thinking...
-                </span>
-              </div>
-            </div>
-          )}
-          <div ref={chatBottomRef} />
-        </div>
-        
-        {toolActivity.length > 0 && (
-          <div className="bg-surface-dim border-t border-border-subtle px-6 py-3">
-            <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold text-text-secondary">
-              <span>Tools: {toolCallCount} calls</span>
-              <div className="flex flex-wrap gap-2">
-                {toolActivity.slice(-5).map((a) => (
-                  <span key={a.id} className="bg-surface-elevated border border-border-subtle text-text-secondary px-2 py-1 uppercase tracking-widest text-[10px]">{a.name}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex flex-wrap gap-3 p-4 md:p-6 border-t border-border-subtle bg-surface">
-          {status !== 'stopped' && (
-            <button
-              type="button"
-              onClick={handleStop}
-              disabled={!address || isActionLoading}
-              className="px-6 py-4 text-xs uppercase tracking-widest font-bold border border-red-900/50 text-red-500 hover:bg-red-900/10 transition-colors disabled:opacity-50"
-            >
-              {isActionLoading ? 'Stopping...' : 'End Session'}
-            </button>
-          )}
-          <input
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) sendMessage() }}
-            placeholder={status === 'stopped' ? 'Session ended' : 'Ask the agent...'}
-            disabled={chatLoading || status === 'stopped'}
-            aria-label="Message to agent"
-            className="min-w-0 w-full md:w-auto flex-1 bg-surface-elevated border border-border-subtle px-6 py-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none disabled:opacity-50 transition-colors"
-          />
-          <button
-            type="button"
-            onClick={sendMessage}
-            disabled={chatLoading || !chatInput.trim() || status === 'stopped'}
-            className="bg-text-primary text-surface-elevated font-bold px-8 py-4 text-xs uppercase tracking-widest transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-
-      {showReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-surface-elevated border border-border-strong w-full max-w-2xl mx-4 shadow-2xl shadow-black/10">
-            <div className="border-b border-border-subtle p-8 bg-surface-dim flex items-center justify-between">
-              <div>
-                <h3 className="font-display font-bold text-3xl text-text-primary italic">Session Complete</h3>
-                <p className="text-text-tertiary text-xs font-mono mt-2">#{id?.slice(0, 8)}</p>
-              </div>
-              <span className="text-xs uppercase tracking-widest font-bold px-3 py-1 border border-border-strong text-text-tertiary">Settled</span>
-            </div>
-
-            <div className="grid grid-cols-3 divide-x divide-border-subtle text-center border-b border-border-subtle">
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-accent mb-1">${(accrued / 1_000_000).toFixed(4)}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Total Cost</div>
-              </div>
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-text-primary mb-1">{sessionDuration()}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Duration</div>
-              </div>
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-text-primary mb-1">{proofs.length}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Proofs</div>
-              </div>
-            </div>
-
-            <div className="p-8 border-b border-border-subtle">
-              <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-4">Settlement Breakdown</p>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Curator Payout</span>
-                  <span className="text-text-primary font-bold">${(ratePerSec > 0 ? accrued * curatorRate / ratePerSec / 1_000_000 : 0).toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Platform Fee</span>
-                  <span className="text-text-primary font-bold">${(ratePerSec > 0 ? accrued * platformFee / ratePerSec / 1_000_000 : 0).toFixed(4)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 border-b border-border-subtle">
-              <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-4">Session Activity</p>
-              <div className="grid grid-cols-3 gap-6 text-sm">
-                <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{chatHistory.filter(m => m.role === 'user').length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Messages Sent</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{chatHistory.filter(m => m.role === 'model').length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Agent Replies</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{steps.length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Work Steps</span>
-                </div>
-              </div>
-            </div>
-
-            {address && agentId && (
-              <div className="p-8 border-b border-border-subtle">
-                <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-5">Rate This Agent</p>
-                {ratingSubmitted ? (
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <span key={star} className={`text-2xl ${star <= reviewRating ? 'text-accent' : 'text-border-strong'}`}>★</span>
-                      ))}
-                    </div>
-                    <span className="text-xs uppercase tracking-widest text-text-tertiary">Submitted — thank you</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => handleRateAgent(star)}
-                          onMouseEnter={() => setRatingHover(star)}
-                          onMouseLeave={() => setRatingHover(0)}
-                          className="text-2xl transition-colors"
-                        >
-                          <span className={(ratingHover || reviewRating) >= star ? 'text-accent' : 'text-border-strong'}>★</span>
-                        </button>
-                      ))}
-                    </div>
-                    <span className="text-xs text-text-tertiary">Click to rate</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="p-8 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => router.push('/sessions')}
-                className="text-xs uppercase tracking-widest font-bold text-text-tertiary hover:text-text-primary transition-colors"
-              >
-                View All Sessions &rarr;
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowReview(false)}
-                className="bg-text-primary text-surface-elevated font-bold px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-accent"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        <form className="chat-composer" onSubmit={e=>{e.preventDefault();void sendMessage()}}><textarea rows={2} value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&e.keyCode!==229){e.preventDefault();void sendMessage()}}} placeholder={status==='stopped'?'本次服務已結束，可回看對話。':'補充你的情況，或接著問…'} disabled={chatLoading||status!=='active'} aria-label="你的訊息" /><button type="submit" className="button-primary" disabled={chatLoading||!chatInput.trim()||status!=='active'}>{chatLoading?'回覆中':'送出'}<Icon /></button></form>
+      </section>
+      <aside className="session-sidebar" aria-label="費用與操作"><SalaryTicker accrued={accrued} ratePerSec={ratePerSec} status={status} snapshot={costSnapshot} /><p>畫面費用為估算，最終以合約結算為準。離開頁面不等於結束服務。</p>{status!=='stopped'?<button className="button-secondary" onClick={handleStop} disabled={!address||isActionLoading}>{isActionLoading?'正在結束與退款…':'結束並結算'}</button>:<Link href="/agents" className="button-secondary">探索其他服務<Icon /></Link>}{!address&&status!=='stopped'&&<p>請用本次服務的錢包連接，才能繼續對話或結束服務。</p>}<details className="technical-details"><summary>費率明細</summary><div><CostBreakdown curatorRate={curatorRate} platformFee={platformFee} /></div></details></aside>
     </div>
-  )
+    <details className="technical-details"><summary>工作紀錄與鏈上活動</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><AgentWorkTimeline steps={steps} /><ProofHeartbeatTimeline proofs={proofs} /><p className="text-sm text-text-secondary md:col-span-2">活動證明記錄服務活動，不代表回覆內容已經查證。工具呼叫 {toolCallCount} 次。服務編號：<span className="break-all">{id}</span></p>{toolActivity.length>0&&<p className="text-xs break-words">最近使用的工具：{toolActivity.map(t=>t.name).join('、')}</p>}</div></details>
+    </>}
+  </div>
 }

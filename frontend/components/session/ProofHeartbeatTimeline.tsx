@@ -11,11 +11,11 @@ export default function ProofHeartbeatTimeline({ proofs }: { proofs: ProofEvent[
   return (
     <div className="border border-border-subtle p-8 bg-surface-elevated h-full">
       <p className="text-text-tertiary text-xs uppercase tracking-widest mb-6">
-        Proof Heartbeats ({proofs.length})
+        鏈上活動證明 ({proofs.length})
       </p>
       <div className="space-y-4 max-h-[32rem] overflow-y-auto pr-2">
         {proofs.length === 0 ? (
-          <p className="text-text-tertiary text-sm italic">Awaiting proofs...</p>
+          <p className="text-text-tertiary text-sm italic">尚無活動證明。</p>
         ) : (
           <AnimatePresence initial={false}>
             {[...proofs].reverse().map((proof) => (
@@ -33,7 +33,7 @@ export default function ProofHeartbeatTimeline({ proofs }: { proofs: ProofEvent[
                   className="w-2 h-2 bg-accent mt-1 flex-shrink-0" 
                 />
                 <div>
-                  <div className="text-accent font-mono font-bold uppercase tracking-widest">#{proof.seq} ✓ Anchored</div>
+                  <div className="text-accent font-mono font-bold uppercase tracking-widest">#{proof.seq} 已記錄</div>
                   <div className="text-text-secondary font-mono truncate mt-1">{proof.proofHash.slice(0, 16)}...</div>
                   <div className="text-text-tertiary mt-1">{new Date(proof.ts).toLocaleTimeString()}</div>
                 </div>

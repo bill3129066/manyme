@@ -19,10 +19,10 @@ const KIND_COLORS: Record<string, string> = {
 export default function AgentWorkTimeline({ steps }: { steps: AgentStep[] }) {
   return (
     <div className="border border-border-subtle p-8 bg-surface-elevated h-full">
-      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-6">Agent Work</p>
+      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-6">服務工作紀錄</p>
       <div className="space-y-6 max-h-[32rem] overflow-y-auto pr-4">
         {steps.length === 0 ? (
-          <p className="text-text-tertiary text-sm italic">Waiting for agent output...</p>
+          <p className="text-text-tertiary text-sm italic">尚無工作紀錄。</p>
         ) : (
           <AnimatePresence initial={false}>
             {[...steps].reverse().map((step, index) => (

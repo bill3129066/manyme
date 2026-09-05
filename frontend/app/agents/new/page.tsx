@@ -1,4 +1,6 @@
 'use client'
+import { parseCuratorRate } from '@/lib/session-cost'
+import { PLATFORM_FEE } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { useRouter } from 'next/navigation'
@@ -49,7 +51,7 @@ export default function UploadAgentPage() {
     model: 'gemini-3.8-flash',
     temperature: '0.3',
     maxTokens: '1024',
-    ratePerSecond: '0',
+    ratePerSecond: '0.0097',
     metadataUri: '',
   })
   const [models, setModels] = useState<{id:string;label:string;preview:boolean}[]>([])
@@ -77,7 +79,7 @@ export default function UploadAgentPage() {
   const [patternFiles, setPatternFiles] = useState<{ name: string; content: string }[]>([])
   const [importPreview, setImportPreview] = useState<{ name: string; description: string; patterns: string[] } | null>(null)
   const [importCategory, setImportCategory] = useState('defi')
-  const [importPrice, setImportPrice] = useState('100')
+  const [importPrice, setImportPrice] = useState('0.0097')
   const [autoCompress, setAutoCompress] = useState(true)
   const [compressStatus, setCompressStatus] = useState('')
 
@@ -195,7 +197,7 @@ export default function UploadAgentPage() {
         model: form.model,
         temperature: parseFloat(form.temperature),
         maxTokens: parseInt(form.maxTokens),
-        ratePerSecond: parseInt(form.ratePerSecond),
+        ratePerSecond: parseCuratorRate(form.ratePerSecond),
         metadataUri: form.metadataUri || undefined,
         inputSchemaJson,
       }, auth)
@@ -257,7 +259,7 @@ export default function UploadAgentPage() {
         model: form.model,
         temperature: 0.2,
         maxTokens: 2048,
-        ratePerSecond: parseInt(importPrice),
+        ratePerSecond: parseCuratorRate(importPrice),
         metadataUri: form.metadataUri || undefined,
         inputSchemaJson: JSON.stringify({
           type: 'object',
@@ -287,7 +289,7 @@ export default function UploadAgentPage() {
           model: form.model,
           temperature: 0.2,
           maxTokens: 2048,
-          ratePerSecond: parseInt(importPrice),
+          ratePerSecond: parseCuratorRate(importPrice),
           inputSchemaJson: JSON.stringify({
             type: 'object',
             properties: { query: { type: 'string' }, address: { type: 'string' }, chain: { type: 'string' } },
@@ -307,6 +309,10 @@ export default function UploadAgentPage() {
   const inputCls = 'w-full bg-surface-dim border border-border-subtle px-4 py-3 text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none text-sm transition-colors'
   const labelCls = 'block text-xs uppercase tracking-widest font-bold text-text-secondary mb-3'
 
+  const pricePreview = (value: string) => <p className="text-sm text-text-secondary mt-3">
+    You earn {Number(value || 0).toFixed(6)} USDC/sec. Platform: {(PLATFORM_FEE / 1_000_000).toFixed(6)}. Buyer total: {(Number(value || 0) + PLATFORM_FEE / 1_000_000).toFixed(6)} USDC/sec.
+    {Number(value) === 0 && ' Your rate is zero: these sessions generate no claimable curator earnings.'}
+  </p>
   const modelPicker = <div>
     <label htmlFor="agent-model" className={labelCls}>Model</label>
     <select id="agent-model" value={form.model} onChange={update('model')} disabled={modelsLoading || !models.length} className={inputCls}>
@@ -421,9 +427,10 @@ export default function UploadAgentPage() {
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Rate (USDC/sec)</label>
+                <label className={labelCls}>Your curator rate (USDC/sec)</label>
                 <input type="number" value={importPrice} onChange={e => setImportPrice(e.target.value)}
-                  min="0" step="1" className={inputCls} />
+                  min="0" step="0.000001" className={inputCls} />
+                {pricePreview(importPrice)}
               </div>
             </div>
 
@@ -542,9 +549,10 @@ export default function UploadAgentPage() {
                   min="128" max="8192" step="128" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Rate (USDC/sec)</label>
+                <label className={labelCls}>Your curator rate (USDC/sec)</label>
                 <input type="number" value={form.ratePerSecond} onChange={update('ratePerSecond')}
-                  min="0" step="1" className={inputCls} />
+                  min="0" step="0.000001" className={inputCls} />
+                {pricePreview(form.ratePerSecond)}
               </div>
             </div>
 

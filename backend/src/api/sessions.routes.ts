@@ -1,7 +1,9 @@
+import { costSnapshot } from '../services/session/costSnapshot.js'
 import { getSession as getChainSession } from '../services/onchain/contractClient.js'
 import { Hono } from 'hono'
 import { getDb } from '../db/client.js'
 import {
+  syncSession,
   startSession,
   pauseSession,
   resumeSession,
@@ -16,7 +18,7 @@ export const sessionsRoutes = new Hono<SignatureEnv>()
 
 // ─── Public read routes ──────────────────────────────────────
 
-sessionsRoutes.get('/', (c) => {
+sessionsRoutes.get('/', async (c) => {
   const wallet = c.req.query('wallet')
   const db = getDb()
 
@@ -26,14 +28,25 @@ sessionsRoutes.get('/', (c) => {
         .all({ $wallet: wallet.toLowerCase() })
     : db.prepare('SELECT * FROM sessions ORDER BY created_at DESC LIMIT 50').all()
 
-  return c.json(rows)
+  return c.json(await Promise.all((rows as any[]).map(async row => {
+    const chain = row.onchain_session_id != null ? await getChainSession(BigInt(row.onchain_session_id)) : null
+    const agent = db.prepare('SELECT name FROM agents WHERE id=?').get(row.agent_id) as any
+    return { ...row, agent_name: agent?.name, accrued_total: chain ? Number(chain.accruedTotal) : null,
+      status: chain ? ['created','active','paused','stopped'][chain.status] : row.status,
+      cost_snapshot: chain ? costSnapshot(chain) : null }
+  })))
 })
 
 sessionsRoutes.get('/:id', async (c) => {
+  await syncSession(c.req.param('id'))
   const session = getSessionDetails(c.req.param('id'))
   if (!session) return c.json({ error: 'Not found' }, 404)
   const chain = session.onchain_session_id != null ? await getChainSession(BigInt(session.onchain_session_id as number)) : null
-  return c.json({...session,accrued_total:chain ? Number(chain.accruedTotal) : 0})
+  const db = getDb()
+  const steps = db.prepare('SELECT step_type AS kind,title,body,created_at AS ts FROM session_steps WHERE session_id=? ORDER BY seq').all(c.req.param('id'))
+  const proofs = db.prepare('SELECT seq,proof_hash AS proofHash,tx_hash AS txHash,submitted_at AS ts FROM proofs WHERE session_id=? ORDER BY seq').all(c.req.param('id'))
+  const executions = db.prepare('SELECT id,input_json,output_text,error_message,status FROM agent_executions WHERE session_id=? ORDER BY created_at,rowid').all(c.req.param('id'))
+  return c.json({...session,steps,proofs,executions,accrued_total:chain ? Number(chain.accruedTotal) : null, cost_snapshot:chain ? costSnapshot(chain) : null, status:chain ? ['created','active','paused','stopped'][chain.status] : session.status})
 })
 
 sessionsRoutes.get('/:id/stream', (c) => {

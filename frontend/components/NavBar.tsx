@@ -24,16 +24,18 @@ export function NavBar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-surface-dim">
-      <div className="mx-auto flex max-w-[1920px] items-center justify-between px-4 sm:px-8 lg:px-24 py-4 lg:py-8">
+      <div className="mx-auto flex flex-wrap gap-4 max-w-[1920px] items-center justify-between px-4 sm:px-8 lg:px-24 py-4 lg:py-8">
         <div className="flex items-center gap-4 lg:gap-12">
           <button 
             type="button"
+            aria-label="Toggle navigation"
+            aria-expanded={isMobileMenuOpen}
             className="md:hidden text-text-primary flex items-center justify-center"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
           </button>
-          <Link href="/" className="font-display text-3xl font-bold tracking-tighter text-text-primary">
+          <Link href="/" className="font-display whitespace-nowrap text-3xl font-bold tracking-tighter text-text-primary">
             分身有術
           </Link>
           <div className="hidden md:flex gap-8">

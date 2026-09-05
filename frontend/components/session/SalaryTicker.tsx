@@ -1,46 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { estimateSessionCost, type CostSnapshot } from '@/lib/session-cost'
+import { useEffect, useState } from 'react'
 import { formatUSDC } from '@/lib/utils'
 
-export default function SalaryTicker({ accrued, ratePerSec, status }: {
+export default function SalaryTicker({ accrued, ratePerSec, status, snapshot }: {
   accrued: number
   ratePerSec: number
+  snapshot?: CostSnapshot | null
   status: string
 }) {
   const [displayValue, setDisplayValue] = useState(accrued)
-  const prevAccruedRef = useRef(accrued)
-
   useEffect(() => {
-    const prev = prevAccruedRef.current
-    if (prev === accrued) return
-
-    const startTime = performance.now()
-    const duration = 1000
-    
-    let animationFrameId: number
-
-    const updateValue = (currentTime: number) => {
-      const elapsed = currentTime - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      
-      const easeOut = 1 - Math.pow(1 - progress, 3)
-      
-      setDisplayValue(prev + (accrued - prev) * easeOut)
-      
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(updateValue)
-      } else {
-        prevAccruedRef.current = accrued
-      }
-    }
-    
-    animationFrameId = requestAnimationFrame(updateValue)
-    
-    return () => cancelAnimationFrame(animationFrameId)
-  }, [accrued])
+    const update = () => setDisplayValue(snapshot ? estimateSessionCost(snapshot, ratePerSec, status, Date.now() / 1000) : accrued)
+    update()
+    if (status !== 'active') return
+    const timer = setInterval(update, 100)
+    return () => clearInterval(timer)
+  }, [accrued, ratePerSec, status, snapshot])
 
   return (
     <div className="border border-border-subtle p-8 bg-surface-elevated">
-      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-4">Session Cost</p>
+      <p className="text-text-tertiary text-xs uppercase tracking-widest mb-4">{status === 'active' ? 'Estimated Session Cost' : 'Session Cost'}</p>
       <div 
         className={`text-6xl font-display font-bold transition-colors ${
           status === 'active' ? 'text-accent' : 'text-text-tertiary'
@@ -49,6 +28,7 @@ export default function SalaryTicker({ accrued, ratePerSec, status }: {
       >
         {formatUSDC(displayValue)}
       </div>
+      <p className="text-sm text-text-secondary mt-3">{status === 'active' ? 'Updates live within the funded proof window. Final cost is settled on Base.' : 'Settled on Base Sepolia.'}</p>
       <div className="flex items-center gap-3 mt-6">
         <div 
           className={`w-2 h-2 ${

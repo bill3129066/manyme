@@ -1,3 +1,4 @@
+import Markdown from '@/components/Markdown'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface AgentStep {
@@ -39,7 +40,7 @@ export default function AgentWorkTimeline({ steps }: { steps: AgentStep[] }) {
                 <div className={`text-xs font-bold uppercase tracking-widest ${KIND_COLORS[step.kind] || 'text-text-secondary'}`}>
                   [{step.kind}] {step.title}
                 </div>
-                <div className="text-base text-text-primary mt-2">{step.body}</div>
+                <div className="text-base text-text-primary mt-2"><Markdown>{step.body}</Markdown></div>
                 <div className="text-xs font-mono text-text-tertiary mt-2">{new Date(step.ts).toLocaleTimeString()}</div>
               </motion.div>
             ))}

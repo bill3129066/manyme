@@ -6,6 +6,8 @@ import { useAccount, useSignMessage } from 'wagmi'
 import { signAction } from '@/lib/sign-action'
 import { chatInSession, stopSession, rateAgent } from '@/lib/agents-api'
 
+import Markdown from '@/components/Markdown'
+import type { CostSnapshot } from '@/lib/session-cost'
 import SalaryTicker from '@/components/session/SalaryTicker'
 import ProofHeartbeatTimeline from '@/components/session/ProofHeartbeatTimeline'
 import AgentWorkTimeline from '@/components/session/AgentWorkTimeline'
@@ -43,6 +45,7 @@ export default function SessionPage() {
   const [status, setStatus] = useState<'active' | 'paused' | 'stopped'>('active')
   const [steps, setSteps] = useState<AgentStep[]>([])
   const [proofs, setProofs] = useState<ProofEvent[]>([])
+  const [costSnapshot, setCostSnapshot] = useState<CostSnapshot | null>(null)
   const [accrued, setAccrued] = useState(0)
   const [ratePerSec, setRatePerSec] = useState(0)
   const [curatorRate, setCuratorRate] = useState(0)
@@ -67,6 +70,7 @@ export default function SessionPage() {
   const [reviewRating, setReviewRating] = useState(0)
   const [ratingHover, setRatingHover] = useState(0)
   const [ratingSubmitted, setRatingSubmitted] = useState(false)
+  const sessionEndRef = useRef<number | null>(null)
   const sessionStartRef = useRef(Date.now())
   
   const [toolCallCount, setToolCallCount] = useState(0)
@@ -91,8 +95,22 @@ export default function SessionPage() {
     fetch(`${apiBase}/api/sessions/${id}`)
       .then(r => r.json())
       .then((session: any) => {
+        if (session.ended_at) sessionEndRef.current = new Date(session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
+        if (session.steps) setSteps(session.steps)
+        if (session.proofs) setProofs(session.proofs)
+        if (session.executions?.length && !sessionStorage.getItem(`session_query_${id}`)) {
+          const restored: ChatMessage[] = []
+          for (const execution of session.executions) {
+            const input = JSON.parse(execution.input_json || '{}')
+            if (input.message) restored.push({id: execution.id + '-user', role:'user', text:input.message})
+            if (execution.output_text) restored.push({id:execution.id + '-model',role:'model',text:execution.output_text})
+            if (execution.error_message) restored.push({id:execution.id + '-error',role:'error',text:execution.error_message})
+          }
+          setChatHistory(restored)
+        }
         setOnchainId(session.onchain_session_id)
         setAccrued(session.accrued_total || 0)
+        setCostSnapshot(session.cost_snapshot || null)
         if (session.total_rate) setRatePerSec(session.total_rate)
         if (session.curator_rate) setCuratorRate(session.curator_rate)
         if (session.platform_fee) setPlatformFee(session.platform_fee)
@@ -111,7 +129,10 @@ export default function SessionPage() {
     if (!isValidSession) return
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
     
+    let disposed = false
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined
     const connect = () => {
+      if (disposed) return
       const es = new EventSource(`${apiBase}/api/sessions/${id}/stream`)
       eventSourceRef.current = es
 
@@ -156,7 +177,9 @@ export default function SessionPage() {
       })
 
       es.addEventListener('earnings', (e) => {
-        const { accrued: newAccrued } = JSON.parse(e.data)
+        const { accrued: newAccrued, cost_snapshot, status: chainStatus } = JSON.parse(e.data)
+        if (cost_snapshot) setCostSnapshot(cost_snapshot)
+        if (chainStatus) setStatus(chainStatus)
         setAccrued(newAccrued)
       })
 
@@ -197,12 +220,12 @@ export default function SessionPage() {
 
       es.onerror = () => {
         es.close()
-        setTimeout(connect, 3000)
+        reconnectTimer = setTimeout(connect, 3000)
       }
     }
 
     connect()
-    return () => eventSourceRef.current?.close()
+    return () => { disposed = true; clearTimeout(reconnectTimer); eventSourceRef.current?.close() }
   }, [id, isValidSession, address, signMessageAsync])
 
   useEffect(() => {
@@ -221,6 +244,13 @@ export default function SessionPage() {
       await escrow.refund(onchainId)
       const auth = await signAction(signMessageAsync, address, 'stop-session', id)
       await stopSession(id, auth)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const response = await fetch(`${apiBase}/api/sessions/${id}`)
+      if (!response.ok) throw new Error('Session stopped; refresh to read final settlement')
+      const settled = await response.json()
+      if (settled.ended_at) sessionEndRef.current = new Date(settled.ended_at.replace(' ', 'T') + (settled.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
+      setAccrued(settled.accrued_total)
+      setCostSnapshot(settled.cost_snapshot)
       setStatus('stopped')
       eventSourceRef.current?.close()
       setShowReview(true)
@@ -241,7 +271,7 @@ export default function SessionPage() {
   }, [hasChatError, status, address, onchainId])
 
   const sessionDuration = () => {
-    const secs = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+    const secs = Math.floor(((sessionEndRef.current ?? Date.now()) - sessionStartRef.current) / 1000)
     const m = Math.floor(secs / 60)
     const s = secs % 60
     if (m === 0) return `${s}s`
@@ -309,7 +339,7 @@ export default function SessionPage() {
       <div className="flex items-end justify-between border-b border-border-strong pb-8 mb-16">
         <div>
           <h1 className="text-[3rem] font-display italic leading-none mb-2">Live Session</h1>
-          <p className="text-text-secondary text-lg font-mono">#{id}</p>
+          <p className="text-text-secondary text-sm font-mono break-all">#{id}</p>
         </div>
         <StreamStatusBadge status={status} />
       </div>
@@ -317,16 +347,16 @@ export default function SessionPage() {
 
 
       <div className="grid grid-cols-12 gap-8 items-start">
-        <div className="col-span-3 space-y-8">
-          <SalaryTicker accrued={accrued} ratePerSec={ratePerSec} status={status} />
+        <div className="col-span-12 lg:col-span-3 min-w-0 space-y-8">
+          <SalaryTicker accrued={accrued} ratePerSec={ratePerSec} status={status} snapshot={costSnapshot} />
           <CostBreakdown curatorRate={curatorRate} platformFee={platformFee} />
         </div>
 
-        <div className="col-span-6 h-full min-h-[40rem]">
+        <div className="col-span-12 lg:col-span-6 min-w-0 h-full min-h-[40rem]">
           <AgentWorkTimeline steps={steps} />
         </div>
 
-        <div className="col-span-3 h-full max-h-[40rem]">
+        <div className="col-span-12 lg:col-span-3 min-w-0 h-full max-h-[40rem]">
           <ProofHeartbeatTimeline proofs={proofs} />
         </div>
       </div>
@@ -347,12 +377,12 @@ export default function SessionPage() {
           )}
           {chatHistory.map((msg) => (
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] px-6 py-4 text-sm ${
+              <div className={`max-w-full md:max-w-[85%] px-6 py-4 text-sm ${
                 msg.role === 'user'
                   ? 'bg-surface-dim text-text-primary border border-border-strong font-medium'
                   : 'bg-surface text-text-secondary border border-border-subtle'
               }`}>
-                <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                {msg.role === 'model' ? <Markdown>{msg.text}</Markdown> : <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>}
               </div>
             </div>
           ))}
@@ -382,7 +412,7 @@ export default function SessionPage() {
           </div>
         )}
         
-        <div className="flex gap-4 p-6 border-t border-border-subtle bg-surface">
+        <div className="flex flex-wrap gap-3 p-4 md:p-6 border-t border-border-subtle bg-surface">
           {status !== 'stopped' && (
             <button
               type="button"
@@ -399,7 +429,8 @@ export default function SessionPage() {
             onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) sendMessage() }}
             placeholder={status === 'stopped' ? 'Session ended' : 'Ask the agent...'}
             disabled={chatLoading || status === 'stopped'}
-            className="flex-1 bg-surface-elevated border border-border-subtle px-6 py-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none disabled:opacity-50 transition-colors"
+            aria-label="Message to agent"
+            className="min-w-0 w-full md:w-auto flex-1 bg-surface-elevated border border-border-subtle px-6 py-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none disabled:opacity-50 transition-colors"
           />
           <button
             type="button"

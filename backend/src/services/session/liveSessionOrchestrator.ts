@@ -1,3 +1,4 @@
+import { costSnapshot } from './costSnapshot.js'
 import { getDb } from '../../db/client.js'
 import { randomUUID } from 'crypto'
 import { chatWithAgent } from '../agent/agentExecutor.js'
@@ -75,7 +76,7 @@ export async function syncSession(sessionId: string) {
     "UPDATE sessions SET status=?, ended_at=CASE WHEN ?='stopped' THEN COALESCE(ended_at,datetime('now')) ELSE ended_at END WHERE id=?",
   ).run(status, status, sessionId)
   if (row.status !== status) sseHub.emitStatus(sessionId, status)
-  sseHub.emitEarnings(sessionId, Number(chain.accruedTotal))
+  sseHub.emit(sessionId, 'earnings', { accrued: Number(chain.accruedTotal), cost_snapshot: costSnapshot(chain), status, ts: new Date().toISOString() })
   // Earnings become withdrawable only after the escrow session has stopped.
   if (status === 'stopped') {
     const agent = db

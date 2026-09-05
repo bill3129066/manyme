@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PLATFORM_FEE } from '@/lib/utils'
 import { signAction } from '@/lib/sign-action'
 import { useAccount, useSignMessage } from 'wagmi'
 import Link from 'next/link'
@@ -117,6 +118,7 @@ export default function StudioPage() {
               <span className="text-text-tertiary mr-2 font-sans font-light">$</span>{pendingPayout.toFixed(4)}
             </p>
             <button type="button" disabled={!address || pendingPayout<=0 || payoutPending} onClick={claimPayout} className="mt-6 border border-border-strong px-4 py-3 disabled:opacity-40">{payoutPending?'Confirming payout…':'Claim earnings'}</button>
+            {pendingPayout <= 0 && <p className="mt-3 text-sm text-text-secondary">Earnings become claimable after a paid session ends. A curator rate of 0 earns nothing; platform fees are excluded.</p>}
           </div>
         </div>
 
@@ -186,13 +188,14 @@ export default function StudioPage() {
                       <div className="flex flex-wrap items-center gap-6 md:gap-10 border-t border-border-subtle pt-6">
                         <span className="text-text-primary text-sm flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px] text-text-tertiary">payments</span>
-                          <span className="font-bold uppercase tracking-widest text-xs">${((agent.rate_per_second || 0) / 1_000_000).toFixed(4)}/SEC</span>
+                          <span className="font-bold uppercase tracking-widest text-xs">${((agent.rate_per_second || 0) / 1_000_000).toFixed(4)}/SEC BUYER TOTAL</span>
                         </span>
                         <span className="text-text-secondary text-sm flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px] text-text-tertiary">account_balance_wallet</span>
                           <span className="font-bold uppercase tracking-widest text-xs">${(earnings.sessions.filter(s=>s.agent_id===agent.id).reduce((total,s)=>total+s.earned_amount,0)/1000000).toFixed(4)} EARNED</span>
                         </span>
                       </div>
+                      {agent.rate_per_second === PLATFORM_FEE && <p className="mt-3 text-sm text-text-secondary">Curator rate: 0 USDC/sec. This listing earns no curator payout. Publish a new agent with a paid curator rate to earn.</p>}
                     </div>
                     
                     <div className="flex flex-col items-start md:items-end gap-3 mt-6 md:mt-0 w-full md:w-auto border-t md:border-t-0 border-border-subtle pt-6 md:pt-0">

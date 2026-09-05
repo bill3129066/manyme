@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useAccount } from 'wagmi'
 import { fetchSessions } from '@/lib/api'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -23,16 +24,22 @@ function formatDuration(createdAt: string, endedAt: string | null) {
 }
 
 export default function SessionsPage() {
+  const { address } = useAccount()
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchSessions()
-      .then(setSessions)
-      .catch((e: any) => setError(e.message || 'Failed to fetch sessions'))
-      .finally(() => setLoading(false))
-  }, [])
+    setSessions([])
+    if (!address) { setLoading(false); return }
+    let cancelled = false
+    setLoading(true)
+    fetchSessions(address)
+      .then(rows => { if (!cancelled) setSessions(rows) })
+      .catch((e: any) => { if (!cancelled) setError(e.message || 'Failed to fetch sessions') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [address])
 
   return (
     <div className="bg-background min-h-screen text-text-primary">
@@ -44,7 +51,7 @@ export default function SessionsPage() {
               My Sessions
             </h1>
             <p className="font-display italic text-2xl text-text-secondary">
-              All agent session history and work records.
+              Your agent sessions and on-chain costs.
             </p>
           </div>
           <Link
@@ -76,7 +83,7 @@ export default function SessionsPage() {
         ) : sessions.length === 0 ? (
           <div className="bg-surface-dim p-24 flex flex-col items-center justify-center text-center">
             <span className="material-symbols-outlined text-4xl text-text-tertiary mb-6">stream</span>
-            <h3 className="font-display text-3xl mb-4 italic">No sessions yet</h3>
+            <h3 className="font-display text-3xl mb-4 italic">{address ? 'No sessions yet' : 'Connect your wallet'}</h3>
             <p className="text-text-secondary mb-8 max-w-md">
               Start a session from the Marketplace to begin streaming agent work.
             </p>
@@ -100,14 +107,15 @@ export default function SessionsPage() {
                     <span className="text-xs text-text-tertiary font-mono">#{s.id.slice(0, 8)}</span>
                   </div>
                   <h3 className="font-display text-2xl font-bold group-hover:text-accent transition-colors">
-                    Agent #{s.agent_id}
+                    {s.agent_name || `Agent #${s.agent_id}`}
                   </h3>
                   <p className="text-xs text-text-tertiary font-mono">
-                    {new Date(s.created_at).toLocaleString()} · {formatDuration(s.created_at, s.ended_at)}
+                    {new Date(s.started_at || `${s.created_at.replace(' ', 'T')}Z`).toLocaleString()} · {formatDuration(s.started_at || `${s.created_at.replace(' ', 'T')}Z`, s.ended_at ? `${s.ended_at.replace(' ', 'T')}${s.ended_at.endsWith('Z') ? '' : 'Z'}` : null)}
                   </p>
                 </div>
                 <div className="text-right space-y-1">
-                  <p className="text-accent font-display text-2xl font-bold">{formatCost(s.total_rate * 4)}</p>
+                  <p className="text-accent font-display text-2xl font-bold">{s.accrued_total == null ? 'Unavailable' : formatCost(s.accrued_total)}</p>
+                  <p className="text-xs text-text-secondary">{s.status === 'stopped' ? 'Final on-chain cost' : 'Confirmed on-chain cost'}</p>
                   <p className="text-xs text-text-secondary uppercase tracking-widest">{formatCost(s.total_rate)}/sec</p>
                 </div>
               </Link>

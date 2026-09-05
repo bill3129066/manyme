@@ -84,6 +84,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.0
         version: 10.4.27(postcss@8.5.8)
+      bun-types:
+        specifier: 1.4.0
+        version: 1.4.0
       eslint:
         specifier: ^8
         version: 8.57.1

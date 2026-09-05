@@ -1,11 +1,13 @@
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi'
+import { useAccount, useConfig, usePublicClient } from 'wagmi'
 import { erc20Abi } from 'viem'
+import { prepareBaseWallet } from './prepare-wallet'
 import { manyMeEscrowAbi } from '../../shared/abis/ManyMeEscrow'
 import { getNetworkConfig } from './networks'
 export function useEscrowActions() {
   const { address } = useAccount()
   const pub = usePublicClient({ chainId: 84532 })
-  const { data: wallet } = useWalletClient()
+  const config = useConfig()
+  const prepare = () => prepareBaseWallet(config)
   async function send(
     functionName:
       | 'registerAgent'
@@ -14,8 +16,8 @@ export function useEscrowActions() {
       | 'refundUnused',
     args: readonly unknown[],
   ) {
-    if (!wallet || !pub) throw new Error('Connect wallet first')
-    if (wallet.chain.id !== 84532) throw new Error('Switch to Base Sepolia')
+    const wallet = await prepare()
+    if (!pub) throw new Error('Base Sepolia RPC is unavailable')
     const { escrowAddress } = getNetworkConfig(84532)
     if (/^0x0+$/.test(escrowAddress))
       throw new Error('Escrow is not configured')
@@ -34,14 +36,15 @@ export function useEscrowActions() {
     return hash
   }
   return {
+    prepare,
     async register(rate: number, metadata: string) {
       if (!Number.isSafeInteger(rate) || rate < 0)
         throw new Error('Invalid rate')
       return send('registerAgent', [BigInt(rate), metadata])
     },
     async create(agentId: number, amount: number) {
-      if (!wallet || !pub) throw new Error('Connect wallet first')
-      if (wallet.chain.id !== 84532) throw new Error('Switch to Base Sepolia')
+      const wallet = await prepare()
+      if (!pub) throw new Error('Base Sepolia RPC is unavailable')
       const { escrowAddress, usdcAddress } = getNetworkConfig(84532)
       const approval = await wallet.writeContract({
         address: usdcAddress,

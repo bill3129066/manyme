@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { modelsRoutes } from './api/models.routes.js';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { agentsRoutes } from './api/agents.routes.js';
@@ -29,6 +30,7 @@ const proofRelayer = new ProofRelayer();
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.route('/api/models', modelsRoutes);
 app.route('/api/agents', agentsRoutes);
 app.route('/api/sessions', sessionsRoutes);
 app.route('/api/curator', curatorRoutes);

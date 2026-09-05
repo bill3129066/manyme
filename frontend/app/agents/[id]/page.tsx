@@ -68,6 +68,7 @@ export default function AgentDetailPage() {
 
   const handleStartSession = async () => {
     if (!address || !agent) return
+    setError('')
     setStarting(true)
     try {
       if(agent.onchain_agent_id==null)throw new Error('This agent is not registered on-chain. Publish a new agent to start an escrow session.')
@@ -98,7 +99,7 @@ export default function AgentDetailPage() {
   }
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-text-secondary font-display">Loading...</p></div>
-  if (error || !agent) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-red-400 font-display">{error || 'Agent not found'}</p></div>
+  if (!agent) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-red-400 font-display">{error || 'Agent not found'}</p></div>
 
   const fields = parseInputSchema(agent.input_schema_json)
   const hasFields = fields.length > 0
@@ -149,6 +150,7 @@ export default function AgentDetailPage() {
               className="px-8 py-3 bg-text-primary text-surface-elevated text-xs uppercase tracking-widest font-bold transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed">
               {starting ? 'Starting...' : address ? 'Start Session' : 'Connect Wallet'}
             </button>
+            {error && <p role="alert" className="text-red-500">{error}</p>}
             {balance !== null && (
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <span className="font-mono">Balance: ${(balance / 1_000_000).toFixed(2)}</span>

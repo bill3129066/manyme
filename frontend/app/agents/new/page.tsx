@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAccount, useSignMessage } from 'wagmi'
 import { useRouter } from 'next/navigation'
 import { useEscrowActions } from '@/lib/escrow-actions'
@@ -52,6 +52,24 @@ export default function UploadAgentPage() {
     ratePerSecond: '0',
     metadataUri: '',
   })
+  const [models, setModels] = useState<{id:string;label:string;preview:boolean}[]>([])
+  const [modelsLoading, setModelsLoading] = useState(true)
+  const [modelsError, setModelsError] = useState('')
+  async function loadModels() {
+    setModelsLoading(true)
+    setModelsError('')
+    try {
+      const api = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const response = await fetch(`${api}/api/models`, {cache:'no-store'})
+      const data = await response.json()
+      if(!response.ok) throw new Error(data.error || 'Unable to load models')
+      setModels(data.models)
+      setForm(previous => ({...previous, model:data.models.some((model:any)=>model.id===previous.model) ? previous.model : data.models[0].id}))
+    } catch(error:any) { setModelsError(error.message); setModels([]) }
+    finally { setModelsLoading(false) }
+  }
+  useEffect(()=>{void loadModels()},[])
+
   const [inputFields, setInputFields] = useState<{ name: string; type: string; required: boolean }[]>([])
 
   // Import state
@@ -135,6 +153,7 @@ export default function UploadAgentPage() {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!address) { setError('Connect wallet first'); return }
+    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('Choose a model from the current catalog');return}
     if (!form.name || !form.description || !form.systemPrompt) {
       setError('Name, description, and system prompt are required'); return
     }
@@ -164,6 +183,7 @@ export default function UploadAgentPage() {
         setCompressStatus(`Compression: ${result.original}B -> ${result.compressed}B (${result.ratio})`)
       }
 
+      await escrow.prepare()
       const auth = await signAction(signMessageAsync, address, 'create-agent')
       const created = await createAgent({
         name: form.name,
@@ -192,6 +212,7 @@ export default function UploadAgentPage() {
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!address) { setError('Connect wallet first'); return }
+    if (modelsLoading || !models.some(model=>model.id===form.model)) {setError('Choose a model from the current catalog');return}
 
     const parsed = parseSkillMd(skillMdContent)
     if (!parsed) { setError('Invalid SKILL.md format. Must have --- frontmatter ---'); return }
@@ -221,6 +242,7 @@ export default function UploadAgentPage() {
         setCompressStatus('Compression complete. Deploying...')
       }
 
+      await escrow.prepare()
       const auth = await signAction(signMessageAsync, address, 'create-agent')
       let createdAgentId = ''
 
@@ -232,7 +254,7 @@ export default function UploadAgentPage() {
         systemPrompt: masterPrompt,
         rawSystemPrompt: parsed.systemPrompt,
         userPromptTemplate: 'Analyze: {{query}}\n\nChain: {{chain}}\nTarget address (if any): {{address}}',
-        model: 'gemini-3.8-flash',
+        model: form.model,
         temperature: 0.2,
         maxTokens: 2048,
         ratePerSecond: parseInt(importPrice),
@@ -249,6 +271,7 @@ export default function UploadAgentPage() {
       for (let i = 0; i < processedPatterns.length; i++) {
         const pattern = processedPatterns[i]
         const originalPattern = patternFiles[i]
+        await escrow.prepare()
         const patternAuth = await signAction(signMessageAsync, address, 'create-agent')
         const patternName = pattern.name
           .replace(/-/g, ' ')
@@ -261,7 +284,7 @@ export default function UploadAgentPage() {
           systemPrompt: pattern.content.slice(0, 8000),
           rawSystemPrompt: originalPattern?.content,
           userPromptTemplate: '{{query}}\n\nTarget: {{address}}\nChain: {{chain}}',
-          model: 'gemini-3.8-flash',
+          model: form.model,
           temperature: 0.2,
           maxTokens: 2048,
           ratePerSecond: parseInt(importPrice),
@@ -283,6 +306,17 @@ export default function UploadAgentPage() {
 
   const inputCls = 'w-full bg-surface-dim border border-border-subtle px-4 py-3 text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none text-sm transition-colors'
   const labelCls = 'block text-xs uppercase tracking-widest font-bold text-text-secondary mb-3'
+
+  const modelPicker = <div>
+    <label htmlFor="agent-model" className={labelCls}>Model</label>
+    <select id="agent-model" value={form.model} onChange={update('model')} disabled={modelsLoading || !models.length} className={inputCls}>
+      {!models.length && <option value="">{modelsLoading ? 'Loading current models…' : 'Models unavailable'}</option>}
+      {models.map(model=><option key={model.id} value={model.id}>{model.label}{model.preview && !/preview/i.test(model.label) ? ' (Preview)' : ''}</option>)}
+    </select>
+    <p className="text-sm text-text-secondary mt-2">Current Gemini text models. Generation depends on your API quota and provider availability.</p>
+    <button type="button" onClick={()=>void loadModels()} disabled={modelsLoading} className="text-sm underline mt-2">Refresh models</button>
+    {modelsError && <p role="alert" className="text-red-500 mt-2">{modelsError}</p>}
+  </div>
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
@@ -320,6 +354,7 @@ export default function UploadAgentPage() {
         {mode === 'import' ? (
           /* ===== IMPORT MODE ===== */
           <form onSubmit={handleImportSubmit} className="space-y-8">
+            {modelPicker}
             {/* Directory Upload */}
             <div className="group border border-border-strong p-12 bg-surface-elevated relative overflow-hidden text-center hover:border-accent transition-colors cursor-pointer">
               <label className="block cursor-pointer relative z-10">
@@ -398,7 +433,7 @@ export default function UploadAgentPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading || !address || !skillMdContent}
+            <button type="submit" disabled={loading || modelsLoading || !models.length || !address || !skillMdContent}
               className="w-full mt-12 bg-text-primary text-surface-elevated font-bold tracking-widest py-4 px-8 text-xs uppercase transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? 'Executing...' : !address ? 'Connect Wallet' : `Deploy Agents (${importPreview ? 1 + patternFiles.length : 0})`}
             </button>
@@ -430,14 +465,7 @@ export default function UploadAgentPage() {
                   <option value="security">Security</option>
                 </select>
               </div>
-              <div>
-                <label className={labelCls}>Model</label>
-                <select value={form.model} onChange={update('model')} className={inputCls}>
-                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                  <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-                  <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                </select>
-              </div>
+              {modelPicker}
             </div>
 
             <div>
@@ -545,7 +573,7 @@ export default function UploadAgentPage() {
               </div>
             )}
 
-            <button type="submit" disabled={loading || !address}
+            <button type="submit" disabled={loading || modelsLoading || !models.length || !address}
               className="w-full mt-12 bg-text-primary text-surface-elevated font-bold tracking-widest py-4 px-8 text-xs uppercase transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? 'Deploying...' : !address ? 'Connect Wallet' : 'Deploy Agent'}
             </button>

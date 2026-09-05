@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useAccount, useChainId, useSwitchChain, useWalletClient } from 'wagmi'
+import { useAccount, useConfig, useSwitchChain } from 'wagmi'
+import { prepareBaseWallet } from '@/lib/prepare-wallet'
 import { fetchAgents } from '@/lib/api'
 import { ConnectWalletButton } from '@/components/wallet/ConnectWalletButton'
 
@@ -97,10 +98,9 @@ const QUERY_TYPES = [
 ]
 
 export default function QueryPage() {
-  const { address } = useAccount()
-  const chainId = useChainId()
+  const { address, chainId } = useAccount()
+  const config = useConfig()
   const { switchChain } = useSwitchChain()
-  const { data: walletClient } = useWalletClient()
   const [agents, setAgents] = useState<any[]>([])
   const [loadingAgents, setLoadingAgents] = useState(true)
   const [selectedAgent, setSelectedAgent] = useState<string>('')
@@ -121,7 +121,7 @@ export default function QueryPage() {
   const paymentNetwork = selectedPayment?.network === 'eip155:84532' || selectedPayment?.network === 'base-sepolia'
     ? 'Base Sepolia'
     : selectedPayment?.network || 'Base Sepolia'
-  const walletReady = Boolean(address && walletClient?.account)
+  const walletReady = Boolean(address)
   const wrongNetwork = Boolean(address && chainId !== BASE_SEPOLIA_CHAIN_ID)
 
   useEffect(() => {
@@ -203,7 +203,8 @@ export default function QueryPage() {
 
     try {
       let res: Response
-      if (!X402_MOCK && walletClient?.account) {
+      if (!X402_MOCK && address) {
+        const walletClient = await prepareBaseWallet(config)
         // Real x402: the SDK signs the EIP-3009 authorization and retries with PAYMENT-SIGNATURE.
         const [{ wrapFetchWithPaymentFromConfig }, { ExactEvmScheme }] = await Promise.all([
           import('@x402/fetch'),

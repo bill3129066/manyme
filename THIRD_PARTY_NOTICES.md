@@ -6,7 +6,7 @@
 
 版本依 `pnpm-lock.yaml` 與 2026-09-06 的已安裝套件核對。
 [完整 npm 依賴盤點](docs/dependency-licenses.json) 包含直接、間接與開發依賴的名稱、版本、來源及套件宣告授權。
-這份盤點來自 macOS arm64 安裝結果；其他平台的選用套件、Solidity 依賴與 skill 另依其來源檔案確認。
+這份盤點是檔案內 sourceCommit 的 macOS arm64 安裝快照，包含當時尚未移除的前端 fetch SDK；目前直接依賴以鎖檔與下表為準。其他平台的選用套件、Solidity 依賴與 skill 另依其來源檔案確認。
 套件 metadata 的 `Unknown` 不代表沒有授權，人工補查結果列於下方。
 
 ## 直接使用的套件
@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | `@google/generative-ai` 0.24.1 | 後端模型 SDK | [Google](https://github.com/google/generative-ai-js)，Apache-2.0 |
 | `hono` 4.12.9、`@hono/node-server` 1.19.11 | HTTP API | [Hono](https://github.com/honojs/hono)、[Node adapter](https://github.com/honojs/node-server)，MIT |
-| `@x402/core`、`@x402/evm`、`@x402/hono`、`@x402/fetch` 2.25.0 | 按次付款的服務端與瀏覽器 SDK | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
+| `@x402/core`、`@x402/evm`、`@x402/hono` 2.25.0 | 後端既有 x402 SDK（前端單次查詢與 fetch SDK 已移除） | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
 | `next` 14.2.35 | 前端框架 | [Next.js](https://github.com/vercel/next.js)，MIT |
 | `react`、`react-dom` 18.3.1 | UI 與渲染 | [React](https://github.com/facebook/react)，MIT |
 | `@rainbow-me/rainbowkit` 2.2.10 | 錢包連接 UI | [RainbowKit](https://github.com/rainbow-me/rainbowkit)，MIT |
@@ -114,3 +114,5 @@ pnpm licenses list --json > /tmp/manyme-licenses.json
 更新 `docs/dependency-licenses.json` 時只保留名稱、版本、授權與公開來源，
 不要提交 pnpm 原始輸出中的本機路徑或個人聯絡資料；同時更新日期、程式版本與 lockfile SHA-256。
 `Unknown` 項目需另讀隨附 LICENSE，不要直接改填 MIT。
+
+上架頁連結至 [Agent Skills 官方格式說明](https://agentskills.io/specification)，提供作者查閱；本站操作說明依現行匯入器自行撰寫，未複製官方文件全文。首頁分身 SVG 與動畫為本次自行製作。

@@ -1,5 +1,7 @@
 # ManyMe — Frontend Test Flows (User Journey)
 
+> 早期開發紀錄：部分流程與設定已調整。現行操作請看[本機指南](BASE-SEPOLIA-DEMO.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
+
 > **目的**：每條流程是 QA 在瀏覽器裡可一步步操作的端到端旅程。  
 > 遇到分岔條件（錢包未連接、未授權、餘額不足…）會列出所有分支路徑。  
 > **按角色分為兩大區**：一般使用者 (User)、策展人 (Curator)。  

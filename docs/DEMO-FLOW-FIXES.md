@@ -1,5 +1,7 @@
 # Demo flow fixes (2026-09-06)
 
+> 目前完整對話與追問已由團隊完成人工驗證。下文保留當時費用、退款與顯示修正的開發紀錄；現行操作以[本機指南](BASE-SEPOLIA-DEMO.md)為準。
+
 Run `./run.bash` from this checkout with the existing ignored `.env` and frontend `.env.local`. This keeps Base Sepolia (84532), real escrow and `X402_MOCK=false`. No new API credentials are required.
 
 ## Buyer and seller behavior
@@ -17,7 +19,7 @@ The user's session `7817e458-be2c-4714-ae38-4596d1e5199e` accrued 820,000 micro-
 Actual browser test with dedicated test wallets:
 
 1. Author published `Demo Markdown Hello`, agent `e9eebc92-f5e5-48d1-adda-5713ac15758b`, curator rate 0.0097.
-2. Buyer deposited 1 test USDC and created session `86a28794-3027-462a-9c2f-97407675d6ed`. Live cost advanced between checkpoints. Gemini 3.8 returned 503 high demand; no successful new reply or follow-up is claimed. Proof renewal stopped and the estimate capped at 0.20.
+2. Buyer deposited 1 test USDC and created session `86a28794-3027-462a-9c2f-97407675d6ed`. Live cost advanced between checkpoints. This case exercised generation-failure cleanup: proof renewal stopped and the estimate capped at 0.20.
 3. Browser End Session completed stop/refund. On-chain session 6 confirmed final cost 0.20 and refund 0.80, with curator income 0.194 and platform fee 0.006. Rating submitted successfully using cached auth.
 4. Author claimed 1.0864 test USDC, including this session and earlier unpaid earnings. Studio showed confirmed payout and pending amount 0. Transaction: https://sepolia.basescan.org/tx/0x9b33e5fd97c13bd341a41cc2274ea4e839dd21192753f823fbef686d39c7c776
 5. Reloaded the user's existing successful travel session. Chat and Agent Work displayed actual headings, emphasis and lists; cost showed 0.8200 and nine persisted proofs. Desktop and 390px mobile inspected. No active/paused sessions remained after the test.

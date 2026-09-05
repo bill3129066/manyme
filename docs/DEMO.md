@@ -1,5 +1,7 @@
 # ManyMe — 3-Minute Demo Script
 
+> 早期開發紀錄：部分流程與設定已調整。現行操作請看[本機指南](BASE-SEPOLIA-DEMO.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
+
 ## Setup (before demo)
 ```bash
 # Terminal 1: Backend

@@ -1,5 +1,7 @@
 # Skill Upload & Execution Architecture
 
+> 早期開發紀錄：部分流程與設定已調整。現行操作請看[本機指南](BASE-SEPOLIA-DEMO.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
+
 ## Overview
 
 讓用戶能上傳自訂 Skills（prompt + 工具組合 + 定價），並在網頁上點擊個別執行。

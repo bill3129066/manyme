@@ -40,7 +40,7 @@ export default function UploadAgentPage() {
     category: 'general',
     systemPrompt: '',
     userPromptTemplate: '',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.8-flash',
     temperature: '0.3',
     maxTokens: '1024',
     ratePerSecond: '0',
@@ -226,7 +226,7 @@ export default function UploadAgentPage() {
         systemPrompt: masterPrompt,
         rawSystemPrompt: parsed.systemPrompt,
         userPromptTemplate: 'Analyze: {{query}}\n\nChain: {{chain}}\nTarget address (if any): {{address}}',
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         temperature: 0.2,
         maxTokens: 2048,
         ratePerSecond: parseInt(importPrice),
@@ -255,7 +255,7 @@ export default function UploadAgentPage() {
           systemPrompt: pattern.content.slice(0, 8000),
           rawSystemPrompt: originalPattern?.content,
           userPromptTemplate: '{{query}}\n\nTarget: {{address}}\nChain: {{chain}}',
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           temperature: 0.2,
           maxTokens: 2048,
           ratePerSecond: parseInt(importPrice),
@@ -428,7 +428,7 @@ export default function UploadAgentPage() {
                 <label className={labelCls}>Model</label>
                 <select value={form.model} onChange={update('model')} className={inputCls}>
                   <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
                   <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 </select>
               </div>

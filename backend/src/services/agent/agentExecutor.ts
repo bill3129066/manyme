@@ -10,7 +10,7 @@ import { TOOL_USE_SYSTEM_PROMPT, buildToolUsePrompt } from '../skill/promptBuild
 import type { AgentRow, AgentExecutionRow } from '../../types/index.js'
 
 const MAX_TOOL_CALLS = parseInt(process.env.MAX_TOOL_CALLS_PER_EXECUTION || '50')
-const DEFAULT_MODEL = 'gemini-2.5-flash'
+const DEFAULT_MODEL = 'gemini-3.8-flash'
 
 interface StepEvent {
   kind: string

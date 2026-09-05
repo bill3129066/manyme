@@ -55,7 +55,7 @@ export async function compressSkillPrompt(rawContent: string): Promise<string> {
     return await geminiQueue.run(async () => {
       const genAI = new GoogleGenerativeAI(apiKey)
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         generationConfig: { temperature: 0.1, maxOutputTokens: 3000 },
       })
 
@@ -87,7 +87,7 @@ export async function compressPattern(rawContent: string): Promise<string> {
     return await geminiQueue.run(async () => {
       const genAI = new GoogleGenerativeAI(apiKey)
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         generationConfig: { temperature: 0.1, maxOutputTokens: 1500 },
       })
 

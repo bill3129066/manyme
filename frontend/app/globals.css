@@ -1412,7 +1412,7 @@ textarea::placeholder {
   stroke: var(--red);
   stroke-width: 20;
   transform-origin: 260px 420px;
-  animation: experience-unfold 4.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: experience-unfold 4.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .ensemble-person path {
   fill: none;
@@ -1445,7 +1445,7 @@ textarea::placeholder {
   stroke: #b6beaa;
   stroke-width: 2;
   stroke-dasharray: 1000;
-  animation: experience-thread 4.8s ease both;
+  animation: experience-thread 4.4s ease both;
 }
 .ensemble-baseline {
   stroke: var(--ink);

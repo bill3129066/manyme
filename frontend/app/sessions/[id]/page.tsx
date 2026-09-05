@@ -12,8 +12,8 @@ import { chatInSession, stopSession, rateAgent, fetchAgent } from '@/lib/agents-
 import Markdown from '@/components/Markdown'
 import type { CostSnapshot } from '@/lib/session-cost'
 import SalaryTicker from '@/components/session/SalaryTicker'
-import ProofHeartbeatTimeline from '@/components/session/ProofHeartbeatTimeline'
-import AgentWorkTimeline from '@/components/session/AgentWorkTimeline'
+import ActivityTrail from '@/components/session/ActivityTrail'
+import SettlementDialog from '@/components/session/SettlementDialog'
 import StreamStatusBadge from '@/components/session/StreamStatusBadge'
 import CostBreakdown from '@/components/session/CostBreakdown'
 
@@ -83,13 +83,6 @@ export default function SessionPage() {
   const sessionEndRef = useRef<number | null>(null)
   const sessionStartRef = useRef(Date.now())
 
-  const [toolCallCount, setToolCallCount] = useState(0)
-  interface ToolActivityItem {
-    id: string
-    name: string
-  }
-  const [toolActivity, setToolActivity] = useState<ToolActivityItem[]>([])
-
   const chatBottomRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const initialQuerySentRef = useRef(false)
@@ -118,7 +111,24 @@ export default function SessionPage() {
           sessionEndRef.current = new Date(
             session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z'),
           ).getTime()
-        if (session.steps) setSteps(session.steps)
+        if (session.steps?.length) setSteps(session.steps)
+        else if (session.executions?.length) {
+          setSteps(
+            session.executions.flatMap((execution: any) => [
+              { kind: 'api', title: 'Execution started', body: '', ts: execution.created_at },
+              ...(execution.completed_at
+                ? [
+                    {
+                      kind: 'finding',
+                      title: execution.error_message ? '這次回覆未能完成' : 'Complete',
+                      body: '',
+                      ts: execution.completed_at,
+                    },
+                  ]
+                : []),
+            ]),
+          )
+        }
         if (session.proofs) setProofs(session.proofs)
         if (session.executions?.length && !sessionStorage.getItem(`session_query_${id}`)) {
           const restored: ChatMessage[] = []
@@ -189,12 +199,11 @@ export default function SessionPage() {
           const auth = await signAction(signMessageAsync, address, 'chat-session', id)
           return chatInSession(id, initialQuery, [], auth)
         })()
-          .then(({ reply, toolCallCount: tc }) => {
+          .then(({ reply }) => {
             setChatHistory((prev) => [
               ...prev,
               { id: crypto.randomUUID(), role: 'model', text: reply },
             ])
-            if (tc) setToolCallCount((prev) => prev + tc)
           })
           .catch((err) => {
             setChatHistory((prev) => [
@@ -244,14 +253,6 @@ export default function SessionPage() {
         })
         setChatLoading(false)
       })
-
-      es.addEventListener('tool_use', (e) => {
-        const tool = JSON.parse(e.data)
-        setToolActivity((prev) => [...prev.slice(-9), { id: crypto.randomUUID(), name: tool.name }])
-        setToolCallCount((prev) => prev + 1)
-      })
-
-      es.addEventListener('tool_result', () => {})
 
       es.addEventListener('complete', () => {
         setChatLoading(false)
@@ -385,12 +386,7 @@ export default function SessionPage() {
 
       if (!address) throw new Error('Connect your session wallet')
       const auth = await signAction(signMessageAsync, address, 'chat-session', id)
-      const { reply, toolCallCount: newToolCount } = await chatInSession(
-        id,
-        text,
-        geminiHistory,
-        auth,
-      )
+      const { reply } = await chatInSession(id, text, geminiHistory, auth)
 
       setChatHistory((prev) => {
         const next = [...prev]
@@ -401,10 +397,6 @@ export default function SessionPage() {
         }
         return next
       })
-
-      if (newToolCount) {
-        setToolCallCount((prev) => prev + newToolCount)
-      }
     } catch (e: any) {
       setChatHistory((prev) => [
         ...prev,
@@ -425,14 +417,19 @@ export default function SessionPage() {
 
   return (
     <div className="page-width page-section session-page">
-      <Link href="/sessions" className="breadcrumb">
-        <Icon name="back" />
-        回到我的紀錄
-      </Link>
+      <nav className="session-destinations" aria-label="服務導覽">
+        <Link href="/agents" className="breadcrumb">
+          <Icon name="back" />
+          探索服務
+        </Link>
+        <Link href="/sessions" className="text-link">
+          我的紀錄
+          <Icon />
+        </Link>
+      </nav>
       <div className="page-heading">
         <div>
           <h1>{serviceName}</h1>
-          <p>說說你的情況，也可以接著補充與追問。</p>
         </div>
         {sessionAvailable && <StreamStatusBadge status={status} />}
       </div>
@@ -446,7 +443,9 @@ export default function SessionPage() {
           正在讀取對話與費用紀錄…
         </p>
       ) : !sessionAvailable ? (
-        <Link href="/sessions" className="button-secondary">查看我的紀錄</Link>
+        <Link href="/sessions" className="button-secondary">
+          查看我的紀錄
+        </Link>
       ) : (
         <>
           <div className="session-mobile-cost">
@@ -460,20 +459,24 @@ export default function SessionPage() {
             )}
           </div>
           {showReview && (
-            <section className="notice mb-6" aria-label="結算結果">
+            <SettlementDialog onClose={() => setShowReview(false)}>
               <div className="flex flex-wrap justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold">這次服務已結束，結算完成。</h2>
+                  <h2 id="settlement-title">這回，分身收工。</h2>
                   <p>
                     最終費用 {(accrued / 1e6).toFixed(4)} USDC · 使用時間 {sessionDuration()}
                     。對話仍可在這裡查看。
                   </p>
                 </div>
-                <button onClick={() => setShowReview(false)}>收起</button>
               </div>
               {address && agentId && (
                 <div className="mt-4">
                   <p>這次的服務對你有幫助嗎？</p>
+                  {pageError && (
+                    <p role="alert" className="text-accent">
+                      {pageError}
+                    </p>
+                  )}
                   {ratingSubmitted ? (
                     <p role="status">謝謝，你的 {reviewRating} 分評價已送出。</p>
                   ) : (
@@ -499,8 +502,23 @@ export default function SessionPage() {
                   )}
                 </div>
               )}
-            </section>
+              <div className="settlement-actions">
+                <Link href="/agents" className="button-primary">
+                  再找一位神隊友
+                  <Icon />
+                </Link>
+                <Link href="/sessions" className="text-link">
+                  查看我的紀錄
+                </Link>
+              </div>
+            </SettlementDialog>
           )}
+          <ActivityTrail
+            steps={steps}
+            proofs={proofs}
+            working={chatLoading}
+            stopped={status === 'stopped'}
+          />
           <div className="session-layout">
             <section className="session-chat" aria-label="與服務對話">
               <div className="session-chat-header">
@@ -601,7 +619,7 @@ export default function SessionPage() {
                 status={status}
                 snapshot={costSnapshot}
               />
-              <p>畫面費用為估算，最終以合約結算為準。離開頁面不等於結束服務。</p>
+              {status !== 'stopped' && <p>離開頁面不會停止計費，請按「結束並結算」。</p>}
               {status !== 'stopped' ? (
                 <button
                   className="button-secondary"
@@ -611,10 +629,10 @@ export default function SessionPage() {
                   {isActionLoading ? '正在結束與退款…' : '結束並結算'}
                 </button>
               ) : (
-                <Link href="/agents" className="button-secondary">
-                  探索其他服務
+                <button className="button-secondary" onClick={() => setShowReview(true)}>
+                  查看結算結果
                   <Icon />
-                </Link>
+                </button>
               )}
               {!address && status !== 'stopped' && (
                 <p>請用本次服務的錢包連接，才能繼續對話或結束服務。</p>
@@ -627,22 +645,6 @@ export default function SessionPage() {
               </details>
             </aside>
           </div>
-          <details className="technical-details">
-            <summary>工作紀錄與鏈上活動</summary>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AgentWorkTimeline steps={steps} />
-              <ProofHeartbeatTimeline proofs={proofs} />
-              <p className="text-sm text-text-secondary md:col-span-2">
-                活動證明記錄服務活動，不代表回覆內容已經查證。工具呼叫 {toolCallCount}{' '}
-                次。服務編號：<span className="break-all">{id}</span>
-              </p>
-              {toolActivity.length > 0 && (
-                <p className="text-xs break-words">
-                  最近使用的工具：{toolActivity.map((t) => t.name).join('、')}
-                </p>
-              )}
-            </div>
-          </details>
         </>
       )}
     </div>

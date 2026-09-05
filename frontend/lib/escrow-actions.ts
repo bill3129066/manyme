@@ -46,6 +46,8 @@ export function useEscrowActions() {
       const wallet = await prepare()
       if (!pub) throw new Error('Base Sepolia RPC is unavailable')
       const { escrowAddress, usdcAddress } = getNetworkConfig(84532)
+      const allowance = await pub.readContract({ address: usdcAddress, abi: erc20Abi, functionName: 'allowance', args: [wallet.account.address, escrowAddress] })
+      if (allowance < BigInt(amount)) {
       const approval = await wallet.writeContract({
         address: usdcAddress,
         abi: erc20Abi,
@@ -58,6 +60,7 @@ export function useEscrowActions() {
       })
       if (receipt.status !== 'success')
         throw new Error('USDC approval reverted')
+      }
       return send('createSession', [BigInt(agentId), BigInt(amount)])
     },
     async stop(id: number) {

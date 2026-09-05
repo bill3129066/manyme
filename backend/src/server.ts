@@ -1,3 +1,4 @@
+import { authRoutes } from './api/auth.routes.js'
 import { Hono } from 'hono';
 import { modelsRoutes } from './api/models.routes.js';
 import { cors } from 'hono/cors';
@@ -19,7 +20,7 @@ app.use('*', cors({
   origin: allowedOrigins,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   exposeHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
-  allowHeaders: ['Access-Control-Expose-Headers', 'Content-Type', 'Cache-Control', 'X-Payment', 'PAYMENT-SIGNATURE', 'Last-Event-ID', 'X-Wallet-Address', 'X-Signature', 'X-Timestamp'],
+  allowHeaders: ['Access-Control-Expose-Headers', 'Content-Type', 'Cache-Control', 'X-Payment', 'PAYMENT-SIGNATURE', 'Last-Event-ID', 'X-Wallet-Address', 'X-Auth-Token', 'Authorization', 'X-Signature', 'X-Timestamp'],
 }));
 
 initDb();
@@ -30,6 +31,7 @@ const proofRelayer = new ProofRelayer();
 
 app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.route('/api/auth', authRoutes);
 app.route('/api/models', modelsRoutes);
 app.route('/api/agents', agentsRoutes);
 app.route('/api/sessions', sessionsRoutes);

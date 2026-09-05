@@ -1,7 +1,9 @@
  'use client'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { useConnect, useAccount, useDisconnect, useSwitchChain } from 'wagmi'
+import { useConnect, useAccountEffect, useAccount, useDisconnect, useSwitchChain } from 'wagmi'
+import { clearAuthSession } from '@/lib/sign-action'
 export function ConnectWalletButton() {
+ useAccountEffect({ onDisconnect: () => clearAuthSession() })
  const {connect,connectors,error,isPending}=useConnect()
  const {isConnected,address,chainId}=useAccount()
  const {switchChain,error:switchError,isPending:switching}=useSwitchChain()

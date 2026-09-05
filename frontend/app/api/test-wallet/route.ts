@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
       const message = hexToString(params[0])
       if (
         params[1]?.toLowerCase() !== account.address.toLowerCase() ||
-        !message.startsWith(`ManyMe Action\nWallet: ${account.address}`)
+        !message.startsWith(`ManyMe Sign-In\nDomain: ${process.env.AUTH_DOMAIN || 'localhost:3000'}\nAddress: ${account.address.toLowerCase()}\nChain ID: 84532\nNonce: `)
       )
-        throw new Error('Only ManyMe action signatures are allowed')
+        throw new Error('Only Base Sepolia ManyMe sign-in signatures are allowed')
       result = await account.signMessage({ message })
     } else if (method === 'eth_signTypedData_v4') {
       const data =

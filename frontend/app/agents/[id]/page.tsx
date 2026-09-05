@@ -74,8 +74,9 @@ export default function AgentDetailPage() {
       if(agent.onchain_agent_id==null)throw new Error('This agent is not registered on-chain. Publish a new agent to start an escrow session.')
       const deposit=Math.round(Number(budget)*1000000)
       if(!Number.isFinite(deposit)||deposit<100000||deposit>10000000)throw new Error('Choose a budget from 0.1 to 10 test USDC')
-      const txHash=await escrow.create(agent.onchain_agent_id,deposit)
+      await escrow.prepare()
       const auth = await signAction(signMessageAsync, address, 'create-session')
+      const txHash=await escrow.create(agent.onchain_agent_id,deposit)
       const session = await createSession(agent.id, inputs, auth, txHash)
       const queryText = inputs._query || inputs.query || Object.values(inputs).join(' ')
       if (queryText) {

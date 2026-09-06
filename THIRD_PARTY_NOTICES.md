@@ -68,11 +68,11 @@ Copyright ConsenSys Software Inc. 2022. All rights reserved.
 
 | 內容 | 來源 | 使用方式與授權 |
 | --- | --- | --- |
-| `skills/defi-onchain-analytics-main/` | [Omnis Labs / defi-onchain-analytics](https://github.com/Omnis-Labs/defi-onchain-analytics) | 匯入 DeFi 分析方法、patterns 與 references，供範例初始化與執行參考；保留 [MIT](skills/defi-onchain-analytics-main/LICENSE) 與 Omnis Labs 著作權。未記錄上游 commit／修改對照。 |
+| `skills/defi-onchain-analytics-main/` | [Omnis Labs / defi-onchain-analytics](https://github.com/Omnis-Labs/defi-onchain-analytics) | 匯入 DeFi 分析方法、patterns 與 references，保留作為歷史範例參考；保留 [MIT](skills/defi-onchain-analytics-main/LICENSE) 與 Omnis Labs 著作權。未記錄上游 commit／修改對照。 |
 | `skills/smart-contract-security/` | 團隊自行製作（已由作者確認） | 安全分析範例，適用本專案 [MIT](LICENSE)。 |
 | `skills/trading-signal-engine/` | 團隊自行製作（已由作者確認） | 交易分析範例，適用本專案 [MIT](LICENSE)。 |
 | `skills/nft-market-intelligence/` | 團隊自行製作（已由作者確認） | NFT 分析範例，適用本專案 [MIT](LICENSE)。 |
-| SQLite 初始服務資料 | [`backend/src/db/init.ts`](backend/src/db/init.ts) | 程式產生的示範目錄及上述 skill 匯入資料，不是外部使用者資料集。 |
+| 展示服務目錄 | [`demoCatalog.ts`](backend/src/db/demoCatalog.ts) | 本專案自行撰寫的服務提示詞與測試輸入，適用本專案 MIT；不再自動上架第三方 pattern。主題來源見[展示服務目錄](docs/DEMO-CATALOG.md)。 |
 | 鏈上查詢 | [`toolExecutor.ts`](backend/src/services/skill/toolExecutor.ts) 與 skill 內列出的 RPC／協定參考 | 按請求查詢公開鏈上資料；原始協定、ABI 與資料服務的來源保留在 references，未宣稱擁有原資料的授權。 |
 
 上傳新 skill 或資料時，需要保留其來源、授權與修改說明。

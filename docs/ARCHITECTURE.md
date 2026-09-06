@@ -66,7 +66,7 @@ proof 表示有活動被提交，不代表模型答案正確；停止更新 proo
 | `backend/` | Hono API、SQLite、模型執行、proof、付款與同步 |
 | `contracts/` | Solidity 合約、Foundry 測試與保留原授權的合約依賴 |
 | `shared/` | 前後端共用的合約 ABI、型別與設定 |
-| `skills/` | 初次初始化使用的範例能力包，來源見[第三方清單](../THIRD_PARTY_NOTICES.md) |
+| `skills/` | 保留的歷史範例能力包；現行服務由[展示目錄](DEMO-CATALOG.md)上架，來源見[第三方清單](../THIRD_PARTY_NOTICES.md) |
 | `scripts/testnet/` | 測試錢包設定、部署與診斷指令 |
 | `scripts/start.ts`、`run.bash` | 根目錄環境設定檢查與前後端啟動 |
 

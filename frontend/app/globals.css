@@ -1663,3 +1663,12 @@ textarea::placeholder {
   .experience-wave { max-width: 330px; }
 }
 @media (prefers-reduced-motion: reduce) { .wave-toggle { display: none; } }
+
+.wallet-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding-block: 40px; border-top: 1px solid var(--line); }
+.wallet-summary h2 { font-size: 28px; margin-bottom: 16px; }
+.wallet-summary p { margin-block: 12px; }
+.wallet-summary select { display: block; width: 100%; padding: 14px; background: var(--paper); border: 1px solid var(--line); margin-bottom: 20px; }
+.summary-result { grid-column: 1 / -1; border-top: 2px solid var(--green); padding-top: 24px; }
+.summary-result h3 { font-size: 20px; margin-bottom: 20px; }
+.summary-result .text-link { margin-top: 24px; }
+@media (max-width: 700px) { .wallet-summary { grid-template-columns: 1fr; gap: 24px; } }

@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | `@google/generative-ai` 0.24.1 | 後端模型 SDK | [Google](https://github.com/google/generative-ai-js)，Apache-2.0 |
 | `hono` 4.12.9、`@hono/node-server` 1.19.11 | HTTP API | [Hono](https://github.com/honojs/hono)、[Node adapter](https://github.com/honojs/node-server)，MIT |
-| `@x402/core`、`@x402/evm`、`@x402/hono` 2.25.0 | 後端既有 x402 SDK（前端單次查詢與 fetch SDK 已移除） | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
+| `@x402/core`、`@x402/evm`、`@x402/hono`、`@x402/fetch` 2.25.0 | 後端 x402 驗證與結算；前端錢包頁的付費分析摘要 | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
 | `next` 14.2.35 | 前端框架 | [Next.js](https://github.com/vercel/next.js)，MIT |
 | `react`、`react-dom` 18.3.1 | UI 與渲染 | [React](https://github.com/facebook/react)，MIT |
 | `@rainbow-me/rainbowkit` 2.2.10 | 錢包連接 UI | [RainbowKit](https://github.com/rainbow-me/rainbowkit)，MIT |

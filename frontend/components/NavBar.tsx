@@ -19,6 +19,7 @@ export function NavBar() {
       label: '我的紀錄',
       active: pathname.startsWith('/sessions') || pathname.startsWith('/session/'),
     },
+    { href: '/settings', label: '我的錢包', active: pathname === '/settings' },
     {
       href: '/studio',
       label: '達人工作室',
@@ -44,12 +45,12 @@ export function NavBar() {
         </div>
         <div className="nav-actions">
           <details className="wallet-menu">
-            <summary>我的錢包</summary>
+            <summary>錢包連線</summary>
             <div className="wallet-panel">
               <h2>我的錢包</h2>
               <ConnectWalletButton />
               <Link href="/settings" className="text-link">
-                查看餘額
+                開啟我的錢包
                 <Icon />
               </Link>
             </div>

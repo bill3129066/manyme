@@ -1,5 +1,6 @@
 'use client'
 
+import { AnalysisSummary } from '@/components/wallet/AnalysisSummary'
 import Link from 'next/link'
 import { useAccount, useReadContract } from 'wagmi'
 import { erc20Abi, formatUnits } from 'viem'
@@ -50,6 +51,7 @@ export default function SettingsPage() {
           <ConnectWalletButton />
         </section>
       )}
+      <AnalysisSummary onPaid={() => { void balance.refetch() }} />
       <div className="wallet-destinations">
         <Link href="/agents" className="button-primary">
           探索服務 →

@@ -52,7 +52,7 @@ proof 表示有活動被提交，不代表模型答案正確；停止更新 proo
 
 ## x402 是另一條付款流程
 
-`/query` 的單次查詢先收到付款要求，瀏覽器簽署 USDC 付款授權，後端交由 facilitator
+`/settings` 我的錢包頁的「最近分析摘要」先收到付款要求，瀏覽器簽署 USDC 付款授權，後端交由 facilitator
 驗證與結算，再提供資源與付款交易紀錄。這條流程不建立按秒計費的 session。
 從 [`x402Server.ts`](../backend/src/services/payments/x402Server.ts) 與
 [`queries.routes.ts`](../backend/src/api/queries.routes.ts) 可以追到付款與資料回傳。
@@ -69,6 +69,6 @@ proof 表示有活動被提交，不代表模型答案正確；停止更新 proo
 | `scripts/testnet/` | 測試錢包設定、部署與診斷指令 |
 | `scripts/start.ts`、`run.bash` | 根目錄環境設定檢查與前後端啟動 |
 
-目前展示以 `/agents`、`/sessions`、`/studio` 與 `/query` 為主。
+目前展示以 `/agents`、`/sessions`、`/studio` 與 `/settings` 為主。
 舊 `/skills`、`/marketplace` 或早期文件中的流程，不宜直接當成現行操作指南。
 更動模型、付款或計費時，請同時檢查對應測試與[參與開發](../CONTRIBUTING.md)中的驗證命令。

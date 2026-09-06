@@ -23,5 +23,5 @@ export async function escrowEvent(
   )
   if (logs.length !== 1)
     throw new Error(`Expected one ${eventName} event from configured escrow`)
-  return logs[0].args as any
+  return { ...logs[0].args, receiptBlockNumber: receipt.blockNumber } as any
 }

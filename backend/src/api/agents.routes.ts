@@ -142,7 +142,7 @@ agentsRoutes.post('/',
         const event = await escrowEvent(body.registrationTxHash, 'AgentRegistered')
         if (event.curator.toLowerCase() !== wallet.toLowerCase()) return c.json({error:'Registration belongs to another wallet'},403)
         onchainAgentId = Number(event.agentId)
-        const rates = await publicClient.readContract({address:config.escrowAddress as `0x${string}`,abi:manyMeEscrowAbi,functionName:'sessionRate',args:[event.agentId]})
+        const rates = await publicClient.readContract({address:config.escrowAddress as `0x${string}`,abi:manyMeEscrowAbi,functionName:'sessionRate',args:[event.agentId],blockNumber:event.receiptBlockNumber})
         ratePerSecond = Number(rates[0])
       } catch (e:any) { return c.json({error:e.shortMessage || e.message},400) }
     }

@@ -54,7 +54,8 @@ for (const entry of DEMO_CATALOG) {
       throw new Error(`Registration mismatch: ${entry.id}`)
     agent = await api('/agents', 'POST', { ...body, registrationTxHash }, headers)
   } else {
-    agent = await api(`/agents/${agent.id}`, 'PUT', body, headers)
+    const rates = await publicClient.readContract({ address: escrow, abi: manyMeEscrowAbi, functionName: 'sessionRate', args: [BigInt(agent.onchain_agent_id)] })
+    agent = await api(`/agents/${agent.id}`, 'PUT', { ...body, ratePerSecond: Number(rates[0]) }, headers)
   }
   if (agent.onchain_agent_id == null) throw new Error(`Unregistered service: ${entry.name}`)
   const chain = await publicClient.readContract({ address: escrow, abi: manyMeEscrowAbi,

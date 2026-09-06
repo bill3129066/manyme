@@ -211,7 +211,7 @@ export default function SessionPage() {
               {
                 id: crypto.randomUUID(),
                 role: 'error',
-                text: displayError(err, '回覆未能完成，請結束本次服務並確認結算。'),
+                text: displayError(err, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
               },
             ])
           })
@@ -268,7 +268,7 @@ export default function SessionPage() {
           {
             id: crypto.randomUUID(),
             role: 'error',
-            text: displayError(error, '回覆未能完成，請結束本次服務並確認結算。'),
+            text: displayError(error, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
           },
         ])
         setChatLoading(false)
@@ -387,7 +387,7 @@ export default function SessionPage() {
         {
           id: crypto.randomUUID(),
           role: 'error',
-          text: displayError(e, '回覆未能完成，請結束本次服務並確認結算。'),
+          text: displayError(e, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
         },
       ])
     } finally {

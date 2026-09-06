@@ -1,3 +1,4 @@
+import { createAtomicSession } from './atomic-session'
 import { useAccount, useConfig, usePublicClient } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { prepareBaseWallet } from './prepare-wallet'
@@ -48,6 +49,12 @@ export function useEscrowActions() {
       const { escrowAddress, usdcAddress } = getNetworkConfig(84532)
       const allowance = await pub.readContract({ address: usdcAddress, abi: erc20Abi, functionName: 'allowance', args: [wallet.account.address, escrowAddress] })
       if (allowance < BigInt(amount)) {
+      const batch = await createAtomicSession(wallet, escrowAddress, usdcAddress, BigInt(agentId), BigInt(amount))
+      if (batch) {
+        const receipt = await pub.waitForTransactionReceipt({ hash: batch, confirmations: 2 })
+        if (receipt.status !== 'success') throw new Error('Escrow transaction reverted')
+        return batch
+      }
       const approval = await wallet.writeContract({
         address: usdcAddress,
         abi: erc20Abi,

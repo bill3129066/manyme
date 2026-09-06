@@ -1397,81 +1397,6 @@ textarea::placeholder {
   opacity: 1;
 }
 
-/* A single experience becomes several helping hands. */
-.hero-ensemble {
-  min-width: 0;
-  aspect-ratio: 1;
-}
-.hero-ensemble svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.ensemble-person {
-  fill: var(--paper);
-  stroke: var(--red);
-  stroke-width: 20;
-  transform-origin: 260px 420px;
-  animation: experience-unfold 4.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.ensemble-person path {
-  fill: none;
-  stroke-linecap: round;
-}
-.ensemble-person-0 {
-  --turn: -29deg;
-  --shift: -58px;
-  stroke: #b6beaa;
-}
-.ensemble-person-1 {
-  --turn: -10deg;
-  --shift: -20px;
-  stroke: var(--green);
-  animation-delay: 0.12s;
-}
-.ensemble-person-2 {
-  --turn: 13deg;
-  --shift: 24px;
-  stroke: #c58965;
-  animation-delay: 0.24s;
-}
-.ensemble-person-3 {
-  --turn: 32deg;
-  --shift: 58px;
-  animation-delay: 0.36s;
-}
-.ensemble-thread {
-  fill: none;
-  stroke: #b6beaa;
-  stroke-width: 2;
-  stroke-dasharray: 1000;
-  animation: experience-thread 4.4s ease both;
-}
-.ensemble-baseline {
-  stroke: var(--ink);
-  stroke-width: 1;
-}
-@keyframes experience-unfold {
-  from {
-    transform: translateX(0) rotate(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  to {
-    transform: translateX(var(--shift)) rotate(var(--turn));
-    opacity: 1;
-  }
-}
-@keyframes experience-thread {
-  from {
-    stroke-dashoffset: 1000;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 .hero-description {
   max-width: 26em;
   font-size: clamp(18px, 1.6vw, 22px);
@@ -1537,7 +1462,7 @@ textarea::placeholder {
   margin-top: 32px;
 }
 @media (max-width: 767px) {
-  .hero-ensemble {
+  .experience-wave {
     max-width: 430px;
     width: 100%;
     margin: 0 auto;
@@ -1545,15 +1470,6 @@ textarea::placeholder {
   .creator-invitation {
     grid-template-columns: 1fr;
     gap: 28px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ensemble-person {
-    animation: none;
-    transform: translateX(var(--shift)) rotate(var(--turn));
-  }
-  .ensemble-thread {
-    animation: none;
   }
 }
 .skill-guide {
@@ -1719,3 +1635,31 @@ textarea::placeholder {
     animation: none;
   }
 }
+
+/* Each chapter stays in place as the next chapter arrives. Tall panels first
+   scroll through their content; their bottom edge then becomes the sticky edge. */
+.home-page > section {
+  position: sticky;
+  top: var(--sticky-top, 88px);
+  min-height: calc(100svh - 88px);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: clamp(40px, 7vh, 88px) max(6vw, calc((100vw - 1440px) / 2));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.home-page > section:nth-child(2) { background: #e8e8dc; }
+.home-page > .how-section { background: var(--green); }
+.home-page .how-layout { width: 100%; }
+.home-page > .creator-invitation { background: #efe3d6; }
+.experience-wave { position: relative; width: 100%; aspect-ratio: 1; min-width: 0; }
+.experience-wave canvas { width: 100%; height: 100%; display: block; }
+.wave-toggle { position: absolute; bottom: 0; right: 0; font-size: 12px; color: var(--ink); padding: 10px; }
+.wallet-test-options { width: 100%; padding-top: 12px; border-top: 1px solid var(--line); }
+.wallet-test-options summary { cursor: pointer; font-size: 13px; }
+@media (max-width: 700px) {
+  .home-page > section { padding: 36px 24px; min-height: calc(100svh - 72px); }
+  .experience-wave { max-width: 330px; }
+}
+@media (prefers-reduced-motion: reduce) { .wave-toggle { display: none; } }

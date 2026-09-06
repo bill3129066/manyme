@@ -1,9 +1,11 @@
+import { ExperienceWave } from '@/components/ExperienceWave'
+import { HomePanels } from '@/components/HomePanels'
 import Link from 'next/link'
 import { Icon } from '@/components/Icon'
 
 export default function HomePage() {
   return (
-    <div className="home-page">
+    <HomePanels>
       <section className="home-hero page-width">
         <div className="hero-copy">
           <h1>
@@ -23,25 +25,7 @@ export default function HomePage() {
             先看看怎麼使用
           </Link>
         </div>
-        <div
-          className="hero-ensemble"
-          role="img"
-          aria-label="一份經驗，化成多個分身，接住不同的需要"
-        >
-          <svg viewBox="0 0 520 540" aria-hidden="true">
-            <path
-              className="ensemble-thread"
-              d="M40 420 C110 420 80 140 240 140 S340 430 485 310"
-            />
-            {[0, 1, 2, 3].map((i) => (
-              <g className={`ensemble-person ensemble-person-${i}`} key={i}>
-                <circle cx="260" cy="175" r="42" />
-                <path d="M174 368 V298 C174 188 346 188 346 298 V368" />
-              </g>
-            ))}
-            <path className="ensemble-baseline" d="M44 464 H476" />
-          </svg>
-        </div>
+        <ExperienceWave />
       </section>
 
       <section className="possibilities page-width" aria-labelledby="possibilities-title">
@@ -121,6 +105,6 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
-    </div>
+    </HomePanels>
   )
 }

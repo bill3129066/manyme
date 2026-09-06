@@ -1,6 +1,6 @@
 # Skill Upload & Execution Architecture
 
-> 早期開發紀錄：部分流程與設定已調整。現行操作請看[本機指南](BASE-SEPOLIA-DEMO.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
+> 早期開發紀錄：部分流程與設定已調整。現行操作請看 [Base 部署與啟動](BASE-DEPLOY.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
 
 ## Overview
 

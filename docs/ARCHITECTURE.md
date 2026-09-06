@@ -1,8 +1,9 @@
 # 架構與程式碼導讀
 
+本文使用「三代旅行規劃師」作為情景範例，說明一次服務從上架、對話到鏈上結算的資料流。
 分身有術把達人的方法放進服務設定，讓買家透過對話使用。
 前端負責操作與錢包交易，後端負責生成回覆與保存紀錄，合約負責預算與結算。
-安裝與展示步驟請看[第一次跑作品](BASE-SEPOLIA-DEMO.md)。
+部署與啟動步驟請看 [Base 部署與啟動](BASE-DEPLOY.md)。
 
 ## 從一次旅行諮詢看程式
 
@@ -70,5 +71,6 @@ proof 表示有活動被提交，不代表模型答案正確；停止更新 proo
 | `scripts/start.ts`、`run.bash` | 根目錄環境設定檢查與前後端啟動 |
 
 目前展示以 `/agents`、`/sessions`、`/studio` 與 `/query` 為主。
-舊 `/skills`、`/marketplace` 或早期文件中的流程，不宜直接當成現行操作指南。
+舊 `/skills`、`/marketplace` 或早期文件中的流程，不宜直接當成現行操作指南；
+需要追溯 Skill 上傳與執行的設計時，請看 [Skill Upload & Execution Architecture](SKILL_UPLOAD_ARCHITECTURE.md)。
 更動模型、付款或計費時，請同時檢查對應測試與[參與開發](../CONTRIBUTING.md)中的驗證命令。

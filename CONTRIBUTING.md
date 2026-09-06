@@ -3,7 +3,7 @@
 謝謝你花時間看分身有術。這是兩個人從 hackathon 做起的作品，
 我們很需要第一次使用時的真實回饋：哪一步看不懂、哪個建議沒接住你的條件，或哪段程式不好理解。
 
-先依[本機指南](docs/BASE-SEPOLIA-DEMO.md)跑起來，再看[架構導讀](docs/ARCHITECTURE.md)找到修改入口。
+先依 [Base 部署與啟動](docs/BASE-DEPLOY.md)跑起來，再看[架構導讀](docs/ARCHITECTURE.md)找到修改入口。
 回報問題可開 [GitHub issue](https://github.com/bill3129066/manyme/issues)，寫下操作步驟、預期與實際結果，
 附上瀏覽器及工具版本。請先遮掉 API key、私鑰、登入 token 與私人對話。
 

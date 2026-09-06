@@ -1,7 +1,7 @@
 # ManyMe 開發約定
 
 修改功能前先讀 `docs/ARCHITECTURE.md`，確認操作入口與資料流。
-啟動、環境設定或展示問題，讀 `docs/BASE-SEPOLIA-DEMO.md`；產品敘事以 README 與 `docs/PITCH.md` 為準。
+啟動、環境設定或展示問題，讀 `docs/BASE-DEPLOY.md`；產品敘事以 README 為準。
 
 - 文件使用繁體中文，以使用者操作與結果說明行為。已知限制與驗證結果分開記錄。
 - 沿用所在檔案的 TypeScript／Solidity 寫法。一次修改集中在一個可驗證的行為。

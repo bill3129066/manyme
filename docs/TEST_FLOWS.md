@@ -1,12 +1,10 @@
 # ManyMe — Frontend Test Flows (User Journey)
 
-> 早期開發紀錄：部分流程與設定已調整。現行操作請看[本機指南](BASE-SEPOLIA-DEMO.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
+> 早期開發紀錄：部分流程與設定已調整。現行操作請看 [Base 部署與啟動](BASE-DEPLOY.md)，程式結構請看[架構導讀](ARCHITECTURE.md)。
 
 > **目的**：每條流程是 QA 在瀏覽器裡可一步步操作的端到端旅程。  
 > 遇到分岔條件（錢包未連接、未授權、餘額不足…）會列出所有分支路徑。  
 > **按角色分為兩大區**：一般使用者 (User)、策展人 (Curator)。  
-> Trivial 檢查項統一放在文件最後。
-
 ---
 
 ## 環境前置
@@ -15,8 +13,8 @@
 |------|----|
 | 網路 | X Layer Testnet (Chain ID 1952) |
 | 錢包 | 任何支援 WalletConnect 的錢包，需切到 X Layer Testnet |
-| USDC 合約 | `0x74b7F16337b8972027F6196A17a631aC6dE26d22` |
-| Escrow 合約 | `0x93e2794E042b6326356768B7CfDeFc871008239e` |
+| USDC 合約 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+| Escrow 合約 | `0x5dbdf1ba2dda688aeb6913ba81901c8d8d1cc476` |
 | 平台費 | 300 micro-USDC/sec (固定) |
 
 ---
@@ -563,92 +561,3 @@
 2. 觀察 `Total Earned` 是否更新
 
 > **注意**：目前 `Total Earned` 在前端是硬編碼 `0`，非動態數據。真正的收益紀錄在後端 `curator_earnings` table，但前端 Dashboard 沒有 fetch 它。這是一個已知的未實作項。
-
----
-
-# Part C — Trivial 檢查項（仍須確認但不是完整旅程）
-
-> 以下是單步或兩步的基本驗證，不構成完整 journey 但仍需確認 pass。
-
-## 導航
-
-| # | 檢查項 | 預期 |
-|---|--------|------|
-| T-01 | 首頁 `/` 的 4 個連結（Browse Agents ×2, Upload Agent, Deploy Agent）都可點且導向正確 | 各自導向 /marketplace, /curator, /curator/agents/new |
-| T-02 | NavBar 全部 7 個連結可點且導向正確 | 每個連結對應頁面正確載入 |
-| T-03 | NavBar active 狀態正確 | 當前頁面對應的連結有 active 樣式 |
-| T-04 | ManyMe logo 點擊回首頁 | 導向 `/` |
-
-## 空狀態
-
-| # | 頁面 | 觸發條件 | 預期 |
-|---|------|---------|------|
-| T-05 | `/marketplace` | 無 agent | 「No agents available」+ 連結到 /curator |
-| T-06 | `/skills` — All tab | 無 skill | 「No skills found」+ 連結到 /upload |
-| T-07 | `/skills` — My Skills tab | 已連接但無自己的 skill | 「You haven't uploaded any skills yet」+ 連結到 /upload |
-| T-08 | `/skills` — My Skills tab | 未連接錢包 | 「Connect your wallet to see your skills」 |
-| T-09 | `/sessions` | 無 session | 「還沒有任何 Session」+ 連結到 /marketplace |
-| T-10 | `/curator` | 已連接但無 agent | 「No agents active」+ 連結到 upload |
-
-## Loading 狀態
-
-| # | 頁面 | 預期 |
-|---|------|------|
-| T-11 | `/marketplace` | 載入中顯示 3 個 loading skeleton |
-| T-12 | `/skills` | 載入中顯示 `Loading skills...` |
-| T-13 | `/sessions` | 載入中顯示 `Loading...` |
-| T-14 | `/curator` | 載入中顯示 2 個 skeleton |
-| T-15 | `/skills/[id]` | 載入中顯示 `Loading...`；skill 不存在顯示紅色 `Skill not found` |
-| T-16 | `/query` — agent 下拉 | 載入中顯示 skeleton |
-
-## Settings 頁
-
-| # | 檢查項 | 預期 |
-|---|--------|------|
-| T-17 | 未連接錢包時所有區塊狀態 | 顯示「Connect your wallet to continue」 |
-| T-18 | 3-Step Guide 狀態隨步驟更新 | Step 1 完成打勾 → 提示 Step 2；Step 2 完成打勾 → 提示 All set |
-| T-19 | Balance Overview 三格數據正確 | Wallet USDC (鏈上) / Platform Balance (API) / Approved Limit (鏈上 allowance) |
-| T-20 | Profile Save 存到 localStorage | 儲存後刷新仍在 |
-| T-21 | USDC/Escrow 合約地址顯示正確 | 對比 Settings 頁顯示的地址和本文件上方的地址 |
-
-## Session 頁
-
-| # | 檢查項 | 預期 |
-|---|--------|------|
-| T-22 | `/session/new` 重導 | 自動導回 `/marketplace` |
-| T-23 | Chat 空白送出 disabled | Send 按鈕 disabled，不可送出 |
-| T-24 | Chat 歷史 localStorage 持久化 | 關掉分頁 → 重開同 session → 歷史仍在 |
-| T-25 | SSE 斷線自動重連 | 斷網 → 恢復 → ~3 秒後重連成功 |
-
-## Execution History
-
-| # | 檢查項 | 預期 |
-|---|--------|------|
-| T-26 | All / Mine tab 切換正確 | Mine 只顯示自己錢包的 execution |
-| T-27 | 未連接錢包時無 Mine tab | Mine tab 不出現 |
-| T-28 | 匿名看到的 execution 遮罩 | 不應看到 input_json / output_text / error_message |
-
-## Skill Upload 頁
-
-| # | 檢查項 | 預期 |
-|---|--------|------|
-| T-29 | Manual / Import tab 切換 | 兩種模式正常切換，不丟失暫存狀態 |
-| T-30 | `+ Add Field` + 刪除 | 可新增/刪除 input fields |
-| T-31 | `{{variable}}` 自動偵測 | blur User Prompt Template 後自動新增欄位 |
-| T-32 | Pattern file 上傳 + 刪除 | 上傳 .md → 列表出現 → 可刪除 → Preview 數量同步 |
-
----
-
-## 已知問題備忘（測試時以實際行為記錄，但這些是已知的 gap）
-
-| # | 問題 | 影響 |
-|---|------|------|
-| K-01 | **建立 Agent (`/curator/agents/new`) 不帶簽名 headers** | 與其他寫入操作 auth pattern 不一致 |
-| K-02 | **Session Chat 不帶簽名 headers** | 任何人可對任意 session 發訊息 |
-| K-03 | **Curator Dashboard `Total Earned` 為前端硬編碼 0** | 不反映真實收益 |
-| K-04 | **Curator Dashboard 未連接錢包時仍可能顯示 agent 列表** | filter 在無 address 時不過濾 |
-| K-05 | **Skill Run 按鈕在餘額不足時不 disable** | 使用者可強行執行，由後端擋 |
-| K-06 | **Query 頁 Ask 問題為空也可送出** | 按鈕不做空值檢查 |
-| K-07 | **多數列表頁 fetch 失敗無獨立錯誤 UI** | 直接落成空狀態而非顯示 error banner |
-| K-08 | **Import SKILL.md 多次簽名中途失敗會導致部分 skills 已建立** | 無 rollback 機制 |
-| K-09 | **Deposit 目前是 demo 模式** | 只寫 DB 不動鏈上 USDC；但 Approve 是真的鏈上交易 |

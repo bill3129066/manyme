@@ -1,8 +1,9 @@
-# 第一次跑分身有術
+# Base 部署與啟動
 
 這份指南從一份新 clone 的程式碼開始，帶你完成設定、上架一個旅行服務，
 再用買家的身分提問、結束退款，最後回到達人端領款。
 全程使用 Base Sepolia 測試網與測試幣，x402 mock 關閉。
+本文使用「三代旅行規劃師」作為情景範例，串起達人上架、買家追問、退款與領款流程。
 
 ## 準備工具
 
@@ -115,7 +116,7 @@ bun --env-file=.env scripts/testnet/deploy.ts
 
 ```bash
 # 終端機一：從專案根目錄啟動後端
-PORT=3101 DATABASE_URL=file:./backend/docs-demo.db \
+PORT=3101 DATABASE_URL=file:./backend/base-deploy.db \
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3100,http://127.0.0.1:3100 \
 bun --env-file=.env backend/src/server.ts
 ```

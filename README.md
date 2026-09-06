@@ -15,7 +15,7 @@
 哪些選項不適合，以及為什麼。當你補充新的限制，服務會帶你重新比較選項、理解取捨。
 
 我們先從條件比較多的自由行開始，例如三代同行、帶小孩，或不自駕的旅行。
-希望讓好建議，不必靠人脈。完整敘事見 [Pitch Script](docs/PITCH.md)。
+希望讓好建議，不必靠人脈。
 
 ## 核心功能
 
@@ -26,7 +26,7 @@
 
 例如，你可以輸入：「我要帶爸媽和小孩出國，不想自駕，也不想每天換飯店。」
 再追問：「如果其中一天遇到下雨，怎麼調整？」服務使用達人設定的流程回應，
-結束後由合約結算這次使用的費用。完整操作見[第一次跑作品](docs/BASE-SEPOLIA-DEMO.md)。
+結束後由合約結算這次使用的費用。完整操作見 [Base 部署與啟動](docs/BASE-DEPLOY.md)。
 
 ## 系統架構
 
@@ -68,14 +68,14 @@ Base Sepolia 合約處理預算、計費、退款與收入。鏈上活動證明�
 | 後端 | Bun、Hono、SQLite | API、SSE、服務執行與紀錄保存 |
 | 智慧合約 | Solidity、Foundry、OpenZeppelin | 註冊服務、預算託管、結算與合約測試 |
 | 支付與鏈上服務 | Base Sepolia、Circle test USDC、x402 | 測試網上的真實交易與按次付款 |
-| Sponsor 技術 | 參賽組別待團隊確認 | 上列為實際使用技術；尚未宣稱符合特定 Challenge／Bounty |
+| Sponsor 技術 | OpenAI、EastRouter、CertiK | 作品提交對應項目 |
 
 ## 安裝與執行
 
 本作品在 **Base Sepolia（chain ID `84532`）** 運行，使用測試 ETH 與測試 USDC。
 需要 Gemini API key、測試錢包與已部署的 escrow 合約；核心流程不需要 OKX key。
 
-[完整安裝指南](docs/BASE-SEPOLIA-DEMO.md) 包含工具版本、環境檔設定、領取測試幣、
+[Base 部署與啟動指南](docs/BASE-DEPLOY.md) 包含工具版本、環境檔設定、領取測試幣、
 部署、第一次上架及退款步驟。完成設定後，在專案根目錄執行：
 
 ```bash
@@ -98,14 +98,13 @@ pnpm --dir frontend build
 ```
 
 本次文件整理已重跑上述檢查：後端 41、前端 10、合約 26 個測試通過。
-驗證環境與範圍見[指南的驗證紀錄](docs/BASE-SEPOLIA-DEMO.md#驗證紀錄)。
+驗證環境與範圍見[指南的驗證紀錄](docs/BASE-DEPLOY.md#驗證紀錄)。
 
 ## 作品展示
 
-- 評選影片：**待補**。
-- 公開展示網址：尚未提供，請依安裝指南在本機體驗。
-- 完整對話與追問：**團隊已完成人工驗證**。
-- 操作案例與鏈上證據：[展示步驟](docs/BASE-SEPOLIA-DEMO.md#走一次完整流程)。
+- 評選影片：[待補]
+- 公開展示網址：[待補]
+- 操作案例與鏈上證據：[展示步驟](docs/BASE-DEPLOY.md#走一次完整流程)。
 
 ## 限制與未來工作
 
@@ -118,9 +117,6 @@ pnpm --dir frontend build
 目前合約沒有手動暫停／恢復功能。生成失敗時會停止更新活動證明，計費受合約 proof window 約束，
 未使用預算可退款；這套機制仍可能產生已使用期間的費用。
 
-接下來希望和旅遊達人一起打磨服務內容，再逐步探索轉職與新住民生活等場景。
-正式營運前也需要完成安全審計、隱私與資料保存設計，以及多人使用的可靠性驗證。
-
 ## 第三方服務、資料與素材
 
 我們使用開源套件、Omnis Labs 的 DeFi skill、Google 字型與圖示，以及外部模型與支付服務。
@@ -128,6 +124,7 @@ pnpm --dir frontend build
 並附依賴版本清單。第三方內容保留各自授權；Gemini API 的使用依 Google 的服務條款。
 
 想了解或修改程式，可先看[架構導讀](docs/ARCHITECTURE.md)與[參與開發](CONTRIBUTING.md)。
+需要追溯 Skill 上傳與執行的設計時，請看 [Skill Upload & Execution Architecture](docs/SKILL_UPLOAD_ARCHITECTURE.md)。
 使用 coding agent 協作時，另有 [AGENTS.md](AGENTS.md) 提供專案約定。
 
 ## 團隊成員

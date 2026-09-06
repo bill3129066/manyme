@@ -33,7 +33,7 @@ export async function signIn(wallet: ReturnType<typeof walletFor>) {
   return { 'x-wallet-address': wallet.account.address, 'x-auth-token': auth.token }
 }
 export async function confirmed(hash: Hex) {
-  const receipt = await publicClient.waitForTransactionReceipt({ hash })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 2 })
   if (receipt.status !== 'success') throw new Error(`Transaction reverted: ${hash}`)
   return receipt
 }

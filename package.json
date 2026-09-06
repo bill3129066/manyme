@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "demo": "bash scripts/demo.sh",
-    "demo:seed": "bun run scripts/demo-data.ts"
+    "demo:seed": "bun --env-file=.env backend/scripts/publish-catalog.ts --apply"
   },
   "workspaces": [
     "shared",

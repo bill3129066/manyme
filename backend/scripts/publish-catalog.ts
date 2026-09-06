@@ -27,7 +27,7 @@ for (const entry of DEMO_CATALOG) {
   const marker = `manyme://catalog/v1/${entry.id}`
   const rows = await api('/agents')
   const matches = rows.filter((a: any) => a.creator_wallet.toLowerCase() === wallet.account.address.toLowerCase() &&
-    (a.metadata_uri === marker || (entry.id === 'three-generation-travel' && a.name === '三代旅行規劃師')))
+    (a.metadata_uri === marker || (entry.id === 'three-generation-travel' && a.id === '7d7096da-1729-424c-b29d-cbc516821acc' && a.onchain_agent_id === 2)))
   if (matches.length > 1) throw new Error(`Ambiguous existing service: ${entry.name}`)
   let agent = matches[0]
   let registrationTxHash: Hex | undefined
@@ -35,7 +35,7 @@ for (const entry of DEMO_CATALOG) {
     name: entry.name, description: entry.description, category: entry.category,
     systemPrompt: entry.systemPrompt, userPromptTemplate: '{{query}}',
     inputSchemaJson: JSON.stringify({ type: 'object', properties: { query: { type: 'string' } }, required: ['query'] }),
-    model: process.env.CATALOG_MODEL || ({ general: 'gemini-3.7-flash', research: 'gemini-3.7-flash', defi: 'gemini-3.6-flash', trading: 'gemini-3.6-flash', nft: 'gemini-3.5-flash', security: 'gemini-3.5-flash' } as Record<string, string>)[entry.category], temperature: 0.3, maxTokens: 4096, metadataUri: marker,
+    model: process.env.CATALOG_MODEL || 'gemini-3.8-flash', temperature: 0.3, maxTokens: 4096, metadataUri: marker,
   }
   if (!agent) {
     const journalKey = `${escrow.toLowerCase()}:${wallet.account.address.toLowerCase()}:${entry.id}`
@@ -54,6 +54,9 @@ for (const entry of DEMO_CATALOG) {
       throw new Error(`Registration mismatch: ${entry.id}`)
     agent = await api('/agents', 'POST', { ...body, registrationTxHash }, headers)
   } else {
+    const registered = await publicClient.readContract({ address: escrow, abi: manyMeEscrowAbi, functionName: 'getAgent', args: [BigInt(agent.onchain_agent_id)] })
+    if (!registered.active || registered.curator.toLowerCase() !== wallet.account.address.toLowerCase()) throw new Error('Existing registration belongs to another curator or is inactive')
+    if (registered.metadataURI !== marker) await confirmed(await wallet.writeContract({ address: escrow, abi: manyMeEscrowAbi, functionName: 'updateAgent', args: [BigInt(agent.onchain_agent_id), registered.curatorRatePerSecond, marker] }))
     const rates = await publicClient.readContract({ address: escrow, abi: manyMeEscrowAbi, functionName: 'sessionRate', args: [BigInt(agent.onchain_agent_id)] })
     agent = await api(`/agents/${agent.id}`, 'PUT', { ...body, ratePerSecond: Number(rates[0]) }, headers)
   }
@@ -62,7 +65,7 @@ for (const entry of DEMO_CATALOG) {
     functionName: 'getAgent', args: [BigInt(agent.onchain_agent_id)] })
   const rates = await publicClient.readContract({ address: escrow, abi: manyMeEscrowAbi,
     functionName: 'sessionRate', args: [BigInt(agent.onchain_agent_id)] })
-  if (!chain.active || chain.curator.toLowerCase() !== agent.creator_wallet.toLowerCase() || Number(rates[0]) !== agent.rate_per_second)
+  if (!chain.active || chain.metadataURI !== marker || chain.curator.toLowerCase() !== agent.creator_wallet.toLowerCase() || Number(rates[0]) !== agent.rate_per_second)
     throw new Error(`Chain state/rate mismatch: ${entry.name}`)
   keepIds.push(agent.id)
   report.push({ id: agent.id, name: agent.name, category: agent.category, onchainAgentId: agent.onchain_agent_id,

@@ -68,3 +68,4 @@ frontend/.impeccable/review/
 # Local catalog transaction recovery journal
 .catalog-registration.json
 .catalog-smoke*.json
+/.impeccable

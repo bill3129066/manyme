@@ -25,6 +25,8 @@ export function displayError(error: unknown, fallback = '操作未完成，請�
   if (/provider.*not found|no.*provider/i.test(message))
     return '這個瀏覽器尚未提供錢包，請在已安裝 MetaMask 等錢包的瀏覽器中開啟。'
   if (/reject|denied|cancel/i.test(message)) return '你已取消錢包操作，填寫的內容仍保留在這裡。'
+  if (/503|high demand|provider response|Service Unavailable/i.test(message))
+    return '模型目前忙線中，請稍後再送一次。對話仍保留在這裡。'
   if (/fetch|network|connect|Failed to reach/i.test(message))
     return '目前無法連上服務，請確認連線後再試一次。'
   if (/insufficient|balance/i.test(message))

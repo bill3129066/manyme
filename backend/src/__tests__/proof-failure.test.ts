@@ -52,3 +52,9 @@ test('a failure occurring while a proof waits in the operator queue cancels that
   expect(sends).toBe(1)
   expect((getDb().prepare('SELECT COUNT(*) AS n FROM proofs WHERE session_id=?').get(sessionId) as any).n).toBe(1)
 })
+
+test('a successful retry resumes proof renewal', async () => {
+ getDb().prepare("INSERT INTO agent_executions (id,agent_id,user_wallet,session_id,status) VALUES (?,?,?,?,'completed')").run(crypto.randomUUID(),agentId,'test-buyer',sessionId)
+ await tick()
+ expect(sends).toBe(2)
+})

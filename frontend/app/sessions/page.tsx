@@ -14,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function formatCost(microUnits: number) {
-  return `$${(microUnits / 1_000_000).toFixed(4)}`
+  return `$${(microUnits / 1_000_000).toFixed(6)}`
 }
 
 function formatDuration(createdAt: string, endedAt: string | null) {

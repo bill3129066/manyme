@@ -128,7 +128,7 @@ export default function StudioPage() {
             <div>
               <h2>累積收入</h2>
               <p>
-                {totalEarned.toFixed(4)}
+                {totalEarned.toFixed(6)}
                 <small>USDC</small>
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function StudioPage() {
             <div>
               <h2>目前可領收入</h2>
               <p>
-                {pendingPayout.toFixed(4)}
+                {pendingPayout.toFixed(6)}
                 <small>USDC</small>
               </p>
               <button
@@ -191,7 +191,7 @@ export default function StudioPage() {
                     <p>{agent.description}</p>
                     <div className="service-meta">
                       <span>
-                        使用費率 {((agent.rate_per_second || 0) / 1e6).toFixed(4)} USDC／秒
+                        使用費率 {((agent.rate_per_second || 0) / 1e6).toFixed(6)} USDC／秒
                       </span>
                       <span>
                         累積收入{' '}
@@ -199,7 +199,7 @@ export default function StudioPage() {
                           earnings.sessions
                             .filter((s) => s.agent_id === agent.id)
                             .reduce((total, s) => total + s.earned_amount, 0) / 1e6
-                        ).toFixed(4)}{' '}
+                        ).toFixed(6)}{' '}
                         USDC
                       </span>
                     </div>

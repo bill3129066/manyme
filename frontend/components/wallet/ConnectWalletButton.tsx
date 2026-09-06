@@ -18,6 +18,19 @@ export function ConnectWalletButton() {
         showBalance={false}
       />
     )
+  const testWallets = connectors.filter((c) => /payer|author/.test(c.name))
+  const ownWallets = connectors.filter((c) => !testWallets.includes(c))
+  const detected = ownWallets.filter((c) => c.id !== 'injected')
+  const visibleWallets = detected.length ? detected : ownWallets
+  const walletButton = (connector: (typeof connectors)[number]) => (
+    <button key={connector.uid} disabled={isPending}
+      onClick={() => connect({ connector, chainId: 84532 })}
+      className="border border-border-subtle px-3 py-2 disabled:opacity-50">
+      {connector.name.includes('payer') ? '連接測試使用者錢包'
+        : connector.name.includes('author') ? '連接測試提供者錢包'
+        : connector.id === 'injected' ? '連接自己的錢包' : `連接 ${connector.name}`}
+    </button>
+  )
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
       {isConnected ? (
@@ -25,22 +38,13 @@ export function ConnectWalletButton() {
           {address?.slice(0, 6)}…{address?.slice(-4)} · 中斷連接
         </button>
       ) : (
-        connectors.map((connector) => (
-          <button
-            key={connector.id}
-            disabled={isPending}
-            onClick={() => connect({ connector, chainId: 84532 })}
-            className="border border-border-subtle px-3 py-2 disabled:opacity-50"
-          >
-            {connector.name.includes('payer')
-              ? '連接測試使用者錢包'
-              : connector.name.includes('author')
-                ? '連接測試提供者錢包'
-                : connector.id === 'injected'
-                  ? '連接自己的錢包（MetaMask 等）'
-                  : `連接 ${connector.name}`}
-          </button>
-        ))
+        <>
+          {visibleWallets.map(walletButton)}
+          {testWallets.length > 0 && <details className="wallet-test-options">
+            <summary>開發測試錢包</summary>
+            <div className="flex flex-wrap gap-3 pt-3">{testWallets.map(walletButton)}</div>
+          </details>}
+        </>
       )}
       {isConnected &&
         (chainId === 84532 ? (

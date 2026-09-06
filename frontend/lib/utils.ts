@@ -1,11 +1,11 @@
 export const PLATFORM_FEE = 300
 
 export function formatRate(microUnits: number): string {
-  return `$${(microUnits / 1_000_000).toFixed(4)}/sec`
+  return `$${(microUnits / 1_000_000).toFixed(6)}/sec`
 }
 
 export function formatUSDC(microUnits: number): string {
-  return `$${(microUnits / 1_000_000).toFixed(4)}`
+  return `$${(microUnits / 1_000_000).toFixed(6)}`
 }
 
 export function truncateAddress(addr: string): string {

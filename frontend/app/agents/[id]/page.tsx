@@ -66,7 +66,7 @@ function parseInputSchema(schemaJson: string | null): InputField[] {
 
 function formatRate(microPerSec: number): string {
   if (microPerSec === 0) return '0 USDC／秒'
-  return `${(microPerSec / 1_000_000).toFixed(4)} USDC／秒`
+  return `${(microPerSec / 1_000_000).toFixed(6)} USDC／秒`
 }
 
 export default function AgentDetailPage() {
@@ -316,7 +316,7 @@ export default function AgentDetailPage() {
               可設定 0.1–10 test USDC。這是使用服務的預算，未使用金額於結束時退回。
             </p>
             {balance !== null && (
-              <p className="field-hint">錢包可用餘額：{(balance / 1e6).toFixed(4)} test USDC</p>
+              <p className="field-hint">錢包可用餘額：{(balance / 1e6).toFixed(6)} test USDC</p>
             )}
           </div>
           {!address && (

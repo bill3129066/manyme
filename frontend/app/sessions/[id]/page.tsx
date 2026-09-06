@@ -326,22 +326,6 @@ export default function SessionPage() {
     }
   }
 
-  // Close escrow after a failed generation; the backend also stops proof renewal.
-  const failureCloseAttempted = useRef(false)
-  const hasChatError = chatHistory.some((message) => message.role === 'error')
-  useEffect(() => {
-    if (
-      !hasChatError ||
-      status === 'stopped' ||
-      !address ||
-      onchainId == null ||
-      failureCloseAttempted.current
-    )
-      return
-    failureCloseAttempted.current = true
-    void handleStop()
-  }, [hasChatError, status, address, onchainId])
-
   const sessionDuration = () => {
     const secs = Math.floor(
       ((sessionEndRef.current ?? Date.now()) - sessionStartRef.current) / 1000,
@@ -450,7 +434,7 @@ export default function SessionPage() {
         <>
           <div className="session-mobile-cost">
             <span>
-              {status === 'stopped' ? '結算費用' : '已確認費用'}：{(accrued / 1e6).toFixed(4)} USDC
+              {status === 'stopped' ? '結算費用' : '已確認費用'}：{(accrued / 1e6).toFixed(6)} USDC
             </span>
             {status !== 'stopped' && (
               <button onClick={handleStop} disabled={!address || isActionLoading}>
@@ -464,7 +448,7 @@ export default function SessionPage() {
                 <div>
                   <h2 id="settlement-title">這回，分身收工。</h2>
                   <p>
-                    最終費用 {(accrued / 1e6).toFixed(4)} USDC · 使用時間 {sessionDuration()}
+                    最終費用 {(accrued / 1e6).toFixed(6)} USDC · 使用時間 {sessionDuration()}
                     。對話仍可在這裡查看。
                   </p>
                 </div>
@@ -513,12 +497,6 @@ export default function SessionPage() {
               </div>
             </SettlementDialog>
           )}
-          <ActivityTrail
-            steps={steps}
-            proofs={proofs}
-            working={chatLoading}
-            stopped={status === 'stopped'}
-          />
           <div className="session-layout">
             <section className="session-chat" aria-label="與服務對話">
               <div className="session-chat-header">
@@ -645,6 +623,12 @@ export default function SessionPage() {
               </details>
             </aside>
           </div>
+          <ActivityTrail
+            steps={steps}
+            proofs={proofs}
+            working={chatLoading}
+            stopped={status === 'stopped'}
+          />
         </>
       )}
     </div>

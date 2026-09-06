@@ -175,7 +175,7 @@ export default function AgentsPage() {
                 <div className="service-price">
                   <div>
                     <strong>
-                      {agent.rate_per_second ? (agent.rate_per_second / 1e6).toFixed(4) : '0'}
+                      {agent.rate_per_second ? (agent.rate_per_second / 1e6).toFixed(6) : '0'}
                     </strong>
                     <small>USDC／秒 · 服務費率</small>
                   </div>

@@ -6,7 +6,7 @@
 
 版本依 `pnpm-lock.yaml` 與 2026-09-06 的已安裝套件核對。
 [完整 npm 依賴盤點](docs/dependency-licenses.json) 包含直接、間接與開發依賴的名稱、版本、來源及套件宣告授權。
-這份盤點來自 macOS arm64 安裝結果；其他平台的選用套件、Solidity 依賴與 skill 另依其來源檔案確認。
+這份盤點是檔案內 sourceCommit 的 macOS arm64 安裝快照，包含當時尚未移除的前端 fetch SDK；目前直接依賴以鎖檔與下表為準。其他平台的選用套件、Solidity 依賴與 skill 另依其來源檔案確認。
 套件 metadata 的 `Unknown` 不代表沒有授權，人工補查結果列於下方。
 
 ## 直接使用的套件
@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | `@google/generative-ai` 0.24.1 | 後端模型 SDK | [Google](https://github.com/google/generative-ai-js)，Apache-2.0 |
 | `hono` 4.12.9、`@hono/node-server` 1.19.11 | HTTP API | [Hono](https://github.com/honojs/hono)、[Node adapter](https://github.com/honojs/node-server)，MIT |
-| `@x402/core`、`@x402/evm`、`@x402/hono`、`@x402/fetch` 2.25.0 | 按次付款的服務端與瀏覽器 SDK | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
+| `@x402/core`、`@x402/evm`、`@x402/hono`、`@x402/fetch` 2.25.0 | 後端 x402 驗證與結算；前端錢包頁的付費分析摘要 | [x402](https://github.com/x402-foundation/x402)，Apache-2.0 |
 | `next` 14.2.35 | 前端框架 | [Next.js](https://github.com/vercel/next.js)，MIT |
 | `react`、`react-dom` 18.3.1 | UI 與渲染 | [React](https://github.com/facebook/react)，MIT |
 | `@rainbow-me/rainbowkit` 2.2.10 | 錢包連接 UI | [RainbowKit](https://github.com/rainbow-me/rainbowkit)，MIT |
@@ -82,12 +82,13 @@ Copyright ConsenSys Software Inc. 2022. All rights reserved.
 
 | 素材 | 來源 | 授權與使用方式 |
 | --- | --- | --- |
-| Inter | [Inter / Google Fonts](https://github.com/google/fonts/tree/main/ofl/inter) | [SIL OFL 1.1](docs/licenses/Inter-OFL.txt)，由 `next/font/google` 載入 |
-| Newsreader | [Newsreader / Google Fonts](https://github.com/google/fonts/tree/main/ofl/newsreader) | [SIL OFL 1.1](docs/licenses/Newsreader-OFL.txt)，由 `next/font/google` 載入 |
+| Noto Sans TC | [Google Fonts](https://github.com/google/fonts/tree/main/ofl/notosanstc) | [SIL OFL 1.1](docs/licenses/Noto-Sans-TC-OFL.txt)，由 `next/font/google` 自行託管，作為繁體中文主字型 |
+| Inter（舊版） | [Inter / Google Fonts](https://github.com/google/fonts/tree/main/ofl/inter) | [SIL OFL 1.1](docs/licenses/Inter-OFL.txt)，由 `next/font/google` 載入 |
+| Newsreader（舊版） | [Newsreader / Google Fonts](https://github.com/google/fonts/tree/main/ofl/newsreader) | [SIL OFL 1.1](docs/licenses/Newsreader-OFL.txt)，由 `next/font/google` 載入 |
 | Material Symbols Outlined | [Google Material Design Icons](https://github.com/google/material-design-icons) | [Apache-2.0](docs/licenses/Material-Symbols-Apache-2.0.txt)，由 Google Fonts CSS 載入 |
 
 載入位置為 [`frontend/app/layout.tsx`](frontend/app/layout.tsx)。
-目前 Git 追蹤的前端沒有另附照片或外部圖片檔；Studio 的點陣背景是程式內嵌 SVG。
+目前 Git 追蹤的前端沒有另附照片或外部圖片檔；新版品牌記號與操作圖示是專案自行繪製的幾何 SVG。
 之後加入截圖、照片、影片或其他素材時，應同步更新此表。
 
 ## 外部服務與條款
@@ -113,3 +114,5 @@ pnpm licenses list --json > /tmp/manyme-licenses.json
 更新 `docs/dependency-licenses.json` 時只保留名稱、版本、授權與公開來源，
 不要提交 pnpm 原始輸出中的本機路徑或個人聯絡資料；同時更新日期、程式版本與 lockfile SHA-256。
 `Unknown` 項目需另讀隨附 LICENSE，不要直接改填 MIT。
+
+上架頁連結至 [Agent Skills 官方格式說明](https://agentskills.io/specification)，提供作者查閱；本站操作說明依現行匯入器自行撰寫，未複製官方文件全文。首頁分身 SVG 與動畫為本次自行製作。

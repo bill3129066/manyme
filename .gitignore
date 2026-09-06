@@ -60,3 +60,7 @@ backend/*.db-wal
 .env.demo
 *.tsbuildinfo
 .sisyphus/
+
+# Local browser verification artifacts
+.playwright-cli/
+frontend/.impeccable/review/

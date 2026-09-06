@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAccount } from 'wagmi'
 import { fetchSessions } from '@/lib/api'
+import { Icon } from '@/components/Icon'
+import { ConnectWalletButton } from '@/components/wallet/ConnectWalletButton'
+import { sessionStatusLabel, displayError } from '@/lib/presentation'
 
 const STATUS_STYLES: Record<string, string> = {
   active: 'border border-accent text-accent',
@@ -11,7 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function formatCost(microUnits: number) {
-  return `$${(microUnits / 1_000_000).toFixed(4)}`
+  return `$${(microUnits / 1_000_000).toFixed(6)}`
 }
 
 function formatDuration(createdAt: string, endedAt: string | null) {
@@ -31,98 +34,107 @@ export default function SessionsPage() {
 
   useEffect(() => {
     setSessions([])
-    if (!address) { setLoading(false); return }
+    setError(null)
+    if (!address) {
+      setLoading(false)
+      return
+    }
     let cancelled = false
     setLoading(true)
     fetchSessions(address)
-      .then(rows => { if (!cancelled) setSessions(rows) })
-      .catch((e: any) => { if (!cancelled) setError(e.message || 'Failed to fetch sessions') })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+      .then((rows) => {
+        if (!cancelled) setSessions(rows)
+      })
+      .catch((e: any) => {
+        if (!cancelled) setError(displayError(e))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [address])
 
   return (
-    <div className="bg-background min-h-screen text-text-primary">
-      <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-24 pt-24 pb-32">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-24">
-          <div>
-            <h1 className="font-display font-bold text-[5rem] leading-[0.95] tracking-tight mb-4">
-              My Sessions
-            </h1>
-            <p className="font-display italic text-2xl text-text-secondary">
-              Your agent sessions and on-chain costs.
-            </p>
+    <div className="page-width page-section">
+      <div className="page-heading">
+        <div>
+          <h1>上次聊到哪，回來接著看。</h1>
+          <p>你的服務紀錄與費用，都留在這裡。</p>
+        </div>
+        <Link href="/agents" className="button-secondary">
+          探索其他服務
+          <Icon />
+        </Link>
+      </div>
+      {error && (
+        <p role="alert" className="notice mb-6">
+          {error}
+        </p>
+      )}
+      {!address ? (
+        <div className="empty-state">
+          <h2>連接錢包，找回你的紀錄。</h2>
+          <p>請使用當時開啟服務的錢包。</p>
+          <div className="flex justify-center">
+            <ConnectWalletButton />
           </div>
-          <Link
-            href="/marketplace"
-            className="group flex items-center gap-2 border-b border-text-primary pb-1 text-sm font-medium text-text-primary transition-colors hover:text-accent hover:border-accent"
-          >
-            Start New Session
-            <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">arrow_forward</span>
+        </div>
+      ) : loading ? (
+        <p role="status" className="py-12">
+          正在讀取服務紀錄…
+        </p>
+      ) : !sessions.length ? (
+        <div className="empty-state">
+          <h2>還沒有使用紀錄</h2>
+          <p>從一份適合你的服務開始，之後就能在這裡回看。</p>
+          <Link className="text-link" href="/agents">
+            找找適合我的服務
+            <Icon />
           </Link>
         </div>
-
-        {error && (
-          <div className="flex items-center justify-between border border-error/30 bg-error/5 px-6 py-3 mb-8">
-            <p className="text-error text-sm">{error}</p>
-            <button type="button" onClick={() => setError(null)} className="text-error hover:text-text-primary text-sm transition-colors">&times;</button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="space-y-8 border-t border-border-subtle">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse border-b border-border-subtle py-8 flex flex-col px-8">
-                <div className="h-8 bg-surface-dim w-1/3 mb-2" />
-                <div className="h-4 bg-surface-dim w-1/4 mb-4" />
-                <div className="h-4 bg-surface-dim w-1/2" />
+      ) : (
+        <div className="history-list">
+          {sessions.map((s) => (
+            <Link className="history-row" href={`/sessions/${s.id}`} key={s.id}>
+              <div>
+                <span
+                  className={`inline-flex px-3 py-1 text-xs mb-3 ${STATUS_STYLES[s.status] || STATUS_STYLES.stopped}`}
+                >
+                  {sessionStatusLabel(s.status)}
+                </span>
+                <h2>{s.agent_name || '服務對話'}</h2>
+                <p>
+                  {new Date(s.started_at || `${s.created_at.replace(' ', 'T')}Z`).toLocaleString(
+                    'zh-TW',
+                  )}{' '}
+                  · 使用時間{' '}
+                  {formatDuration(
+                    s.started_at || `${s.created_at.replace(' ', 'T')}Z`,
+                    s.ended_at
+                      ? `${s.ended_at.replace(' ', 'T')}${s.ended_at.endsWith('Z') ? '' : 'Z'}`
+                      : null,
+                  )}
+                </p>
               </div>
-            ))}
-          </div>
-        ) : sessions.length === 0 ? (
-          <div className="bg-surface-dim p-24 flex flex-col items-center justify-center text-center">
-            <span className="material-symbols-outlined text-4xl text-text-tertiary mb-6">stream</span>
-            <h3 className="font-display text-3xl mb-4 italic">{address ? 'No sessions yet' : 'Connect your wallet'}</h3>
-            <p className="text-text-secondary mb-8 max-w-md">
-              Start a session from the Marketplace to begin streaming agent work.
-            </p>
-            <Link href="/marketplace" className="font-display italic text-accent hover:text-accent-muted text-lg transition-colors">
-              Browse agents and start your first session &rarr;
+              <div className="history-cost">
+                <strong>
+                  {s.accrued_total == null
+                    ? '尚未取得'
+                    : formatCost(s.accrued_total).replace('$', '')}{' '}
+                  <small>USDC</small>
+                </strong>
+                <p>{s.status === 'stopped' ? '最終結算費用' : '鏈上已確認費用'}</p>
+                <span className="text-link text-sm mt-3">
+                  {s.status === 'stopped' ? '回看對話' : '開啟對話'}
+                  <Icon />
+                </span>
+              </div>
             </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col border-t border-border-subtle">
-            {sessions.map((s) => (
-              <Link
-                key={s.id}
-                href={`/sessions/${s.id}`}
-                className="group flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-8 border-b border-border-subtle hover:bg-surface-dim transition-colors px-4 md:px-8"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs uppercase tracking-widest px-3 py-1 font-bold ${STATUS_STYLES[s.status] ?? STATUS_STYLES.stopped}`}>
-                      {s.status}
-                    </span>
-                    <span className="text-xs text-text-tertiary font-mono">#{s.id.slice(0, 8)}</span>
-                  </div>
-                  <h3 className="font-display text-2xl font-bold group-hover:text-accent transition-colors">
-                    {s.agent_name || `Agent #${s.agent_id}`}
-                  </h3>
-                  <p className="text-xs text-text-tertiary font-mono">
-                    {new Date(s.started_at || `${s.created_at.replace(' ', 'T')}Z`).toLocaleString()} · {formatDuration(s.started_at || `${s.created_at.replace(' ', 'T')}Z`, s.ended_at ? `${s.ended_at.replace(' ', 'T')}${s.ended_at.endsWith('Z') ? '' : 'Z'}` : null)}
-                  </p>
-                </div>
-                <div className="text-right space-y-1">
-                  <p className="text-accent font-display text-2xl font-bold">{s.accrued_total == null ? 'Unavailable' : formatCost(s.accrued_total)}</p>
-                  <p className="text-xs text-text-secondary">{s.status === 'stopped' ? 'Final on-chain cost' : 'Confirmed on-chain cost'}</p>
-                  <p className="text-xs text-text-secondary uppercase tracking-widest">{formatCost(s.total_rate)}/sec</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

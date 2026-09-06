@@ -27,7 +27,7 @@ export class ProofRelayer {
     try {
       const rows = getDb()
         .prepare(
-          "SELECT * FROM sessions WHERE status='active' AND onchain_session_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM agent_executions e WHERE e.session_id=sessions.id AND e.status='failed')",
+          "SELECT * FROM sessions WHERE status='active' AND onchain_session_id IS NOT NULL AND COALESCE((SELECT e.status FROM agent_executions e WHERE e.session_id=sessions.id ORDER BY e.rowid DESC LIMIT 1),'') != 'failed'",
         )
         .all() as any[]
       for (const row of rows) {
@@ -59,7 +59,7 @@ export class ProofRelayer {
             // A queued proof must not renew billing after generation has failed.
             const failed = getDb()
               .prepare(
-                "SELECT 1 FROM agent_executions WHERE session_id=? AND status='failed'",
+                "SELECT 1 FROM (SELECT status FROM agent_executions WHERE session_id=? ORDER BY rowid DESC LIMIT 1) WHERE status='failed'",
               )
               .get(row.id)
             if (failed)

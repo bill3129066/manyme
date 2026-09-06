@@ -127,14 +127,6 @@ export async function chatInSession(
   if (getSessionDetails(sessionId)?.status !== 'active')
     throw new Error('Session is not active')
   const db = getDb()
-  if (
-    db
-      .prepare(
-        "SELECT 1 FROM agent_executions WHERE session_id=? AND status='failed'",
-      )
-      .get(sessionId)
-  )
-    throw new Error('Generation failed. End this session and start a new one.')
   const executionId = randomUUID()
   db.prepare(
     "INSERT INTO agent_executions (id,agent_id,user_wallet,session_id,input_json,status) VALUES (?,?,?,?,?,'running')",

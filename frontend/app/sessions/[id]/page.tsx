@@ -4,13 +4,16 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAccount, useSignMessage } from 'wagmi'
 import { signAction } from '@/lib/sign-action'
-import { chatInSession, stopSession, rateAgent } from '@/lib/agents-api'
+import Link from 'next/link'
+import { Icon } from '@/components/Icon'
+import { displayError } from '@/lib/presentation'
+import { chatInSession, stopSession, rateAgent, fetchAgent } from '@/lib/agents-api'
 
 import Markdown from '@/components/Markdown'
 import type { CostSnapshot } from '@/lib/session-cost'
 import SalaryTicker from '@/components/session/SalaryTicker'
-import ProofHeartbeatTimeline from '@/components/session/ProofHeartbeatTimeline'
-import AgentWorkTimeline from '@/components/session/AgentWorkTimeline'
+import ActivityTrail from '@/components/session/ActivityTrail'
+import SettlementDialog from '@/components/session/SettlementDialog'
 import StreamStatusBadge from '@/components/session/StreamStatusBadge'
 import CostBreakdown from '@/components/session/CostBreakdown'
 
@@ -37,11 +40,16 @@ interface ProofEvent {
 export default function SessionPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const escrow=useEscrowActions()
-  const [onchainId,setOnchainId]=useState<number|null>(null)
+  const escrow = useEscrowActions()
+  const [onchainId, setOnchainId] = useState<number | null>(null)
   const { address } = useAccount()
   const { signMessageAsync } = useSignMessage()
 
+  const [pageError, setPageError] = useState('')
+  const [sessionLoading, setSessionLoading] = useState(true)
+  const [sessionAvailable, setSessionAvailable] = useState(false)
+  const [clearedHistory, setClearedHistory] = useState<ChatMessage[] | null>(null)
+  const [serviceName, setServiceName] = useState('服務對話')
   const [status, setStatus] = useState<'active' | 'paused' | 'stopped'>('active')
   const [steps, setSteps] = useState<AgentStep[]>([])
   const [proofs, setProofs] = useState<ProofEvent[]>([])
@@ -50,7 +58,7 @@ export default function SessionPage() {
   const [ratePerSec, setRatePerSec] = useState(0)
   const [curatorRate, setCuratorRate] = useState(0)
   const [platformFee, setPlatformFee] = useState(0)
-  
+
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -58,9 +66,11 @@ export default function SessionPage() {
       if (!saved) return []
       return JSON.parse(saved).map((m: any) => ({
         ...m,
-        id: m.id || crypto.randomUUID()
+        id: m.id || crypto.randomUUID(),
       }))
-    } catch { return [] }
+    } catch {
+      return []
+    }
   })
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
@@ -72,13 +82,6 @@ export default function SessionPage() {
   const [ratingSubmitted, setRatingSubmitted] = useState(false)
   const sessionEndRef = useRef<number | null>(null)
   const sessionStartRef = useRef(Date.now())
-  
-  const [toolCallCount, setToolCallCount] = useState(0)
-  interface ToolActivityItem {
-    id: string
-    name: string
-  }
-  const [toolActivity, setToolActivity] = useState<ToolActivityItem[]>([])
 
   const chatBottomRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -93,21 +96,62 @@ export default function SessionPage() {
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
     fetch(`${apiBase}/api/sessions/${id}`)
-      .then(r => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Unable to load session')
+        return r.json()
+      })
       .then((session: any) => {
-        if (session.ended_at) sessionEndRef.current = new Date(session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
-        if (session.steps) setSteps(session.steps)
+        if (session.agent_name) setServiceName(session.agent_name)
+        else if (session.agent_id) {
+          void fetchAgent(session.agent_id)
+            .then((agent) => setServiceName(agent.name || '服務對話'))
+            .catch(() => {})
+        }
+        if (session.ended_at)
+          sessionEndRef.current = new Date(
+            session.ended_at.replace(' ', 'T') + (session.ended_at.endsWith('Z') ? '' : 'Z'),
+          ).getTime()
+        if (session.steps?.length) setSteps(session.steps)
+        else if (session.executions?.length) {
+          setSteps(
+            session.executions.flatMap((execution: any) => [
+              { kind: 'api', title: 'Execution started', body: '', ts: execution.created_at },
+              ...(execution.completed_at
+                ? [
+                    {
+                      kind: 'finding',
+                      title: execution.error_message ? '這次回覆未能完成' : 'Complete',
+                      body: '',
+                      ts: execution.completed_at,
+                    },
+                  ]
+                : []),
+            ]),
+          )
+        }
         if (session.proofs) setProofs(session.proofs)
         if (session.executions?.length && !sessionStorage.getItem(`session_query_${id}`)) {
           const restored: ChatMessage[] = []
           for (const execution of session.executions) {
             const input = JSON.parse(execution.input_json || '{}')
-            if (input.message) restored.push({id: execution.id + '-user', role:'user', text:input.message})
-            if (execution.output_text) restored.push({id:execution.id + '-model',role:'model',text:execution.output_text})
-            if (execution.error_message) restored.push({id:execution.id + '-error',role:'error',text:execution.error_message})
+            if (input.message)
+              restored.push({ id: execution.id + '-user', role: 'user', text: input.message })
+            if (execution.output_text)
+              restored.push({
+                id: execution.id + '-model',
+                role: 'model',
+                text: execution.output_text,
+              })
+            if (execution.error_message)
+              restored.push({
+                id: execution.id + '-error',
+                role: 'error',
+                text: execution.error_message,
+              })
           }
           setChatHistory(restored)
         }
+        setSessionAvailable(true)
         setOnchainId(session.onchain_session_id)
         setAccrued(session.accrued_total || 0)
         setCostSnapshot(session.cost_snapshot || null)
@@ -122,13 +166,14 @@ export default function SessionPage() {
           sessionStartRef.current = new Date(session.started_at).getTime()
         }
       })
-      .catch(() => {})
+      .catch(() => setPageError('目前無法讀取這次服務，請重新整理頁面。'))
+      .finally(() => setSessionLoading(false))
   }, [isValidSession, id, router])
 
   useEffect(() => {
-    if (!isValidSession) return
+    if (!isValidSession || !sessionAvailable || status === 'stopped') return
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-    
+
     let disposed = false
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined
     const connect = () => {
@@ -144,31 +189,43 @@ export default function SessionPage() {
         initialQuerySentRef.current = true
         sessionStorage.removeItem(storageKey)
 
-        setChatHistory(prev => {
-          if (prev.some(m => m.role === 'user')) return prev
+        setChatHistory((prev) => {
+          if (prev.some((m) => m.role === 'user')) return prev
           return [{ id: crypto.randomUUID(), role: 'user', text: initialQuery }]
         })
         setChatLoading(true)
-
-        ;(async()=>{if(!address)throw new Error('Connect your session wallet'); const auth=await signAction(signMessageAsync,address,'chat-session',id);return chatInSession(id,initialQuery,[],auth)})()
-          .then(({ reply, toolCallCount: tc }) => {
-            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'model', text: reply }])
-            if (tc) setToolCallCount(prev => prev + tc)
+        ;(async () => {
+          if (!address) throw new Error('Connect your session wallet')
+          const auth = await signAction(signMessageAsync, address, 'chat-session', id)
+          return chatInSession(id, initialQuery, [], auth)
+        })()
+          .then(({ reply }) => {
+            setChatHistory((prev) => [
+              ...prev,
+              { id: crypto.randomUUID(), role: 'model', text: reply },
+            ])
           })
           .catch((err) => {
-            setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${err.message}` }])
+            setChatHistory((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                role: 'error',
+                text: displayError(err, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
+              },
+            ])
           })
           .finally(() => setChatLoading(false))
       })
 
       es.addEventListener('step', (e) => {
         const step = JSON.parse(e.data)
-        setSteps(prev => [...prev.slice(-50), step])
+        setSteps((prev) => [...prev.slice(-50), step])
       })
 
       es.addEventListener('proof', (e) => {
         const proof = JSON.parse(e.data)
-        setProofs(prev => [...prev.slice(-20), proof])
+        setProofs((prev) => [...prev.slice(-20), proof])
       })
 
       es.addEventListener('status', (e) => {
@@ -185,7 +242,7 @@ export default function SessionPage() {
 
       es.addEventListener('chunk', (e) => {
         const { chunk } = JSON.parse(e.data)
-        setChatHistory(prev => {
+        setChatHistory((prev) => {
           const next = [...prev]
           if (next.length > 0 && next[next.length - 1].role === 'model') {
             next[next.length - 1].text += chunk
@@ -197,14 +254,6 @@ export default function SessionPage() {
         setChatLoading(false)
       })
 
-      es.addEventListener('tool_use', (e) => {
-        const tool = JSON.parse(e.data)
-        setToolActivity(prev => [...prev.slice(-9), { id: crypto.randomUUID(), name: tool.name }])
-        setToolCallCount(prev => prev + 1)
-      })
-
-      es.addEventListener('tool_result', () => {})
-
       es.addEventListener('complete', () => {
         setChatLoading(false)
       })
@@ -214,7 +263,14 @@ export default function SessionPage() {
         const data = (e as MessageEvent).data
         if (!data) return
         const { error } = JSON.parse(data)
-        setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Error: ${error}` }])
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'error',
+            text: displayError(error, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
+          },
+        ])
         setChatLoading(false)
       })
 
@@ -225,21 +281,27 @@ export default function SessionPage() {
     }
 
     connect()
-    return () => { disposed = true; clearTimeout(reconnectTimer); eventSourceRef.current?.close() }
-  }, [id, isValidSession, address, signMessageAsync])
+    return () => {
+      disposed = true
+      clearTimeout(reconnectTimer)
+      eventSourceRef.current?.close()
+    }
+  }, [id, isValidSession, sessionAvailable, status, address, signMessageAsync])
 
   useEffect(() => {
     if (isValidSession && chatHistory.length > 0) {
       localStorage.setItem(`chat_${id}`, JSON.stringify(chatHistory))
     }
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const area = chatBottomRef.current?.parentElement
+    if (area) area.scrollTop = area.scrollHeight
   }, [chatHistory, id, isValidSession])
 
   const handleStop = async () => {
     if (!address) return
+    setPageError('')
     setIsActionLoading(true)
     try {
-      if(onchainId==null)throw new Error('Session has no on-chain identifier')
+      if (onchainId == null) throw new Error('Session has no on-chain identifier')
       await escrow.stop(onchainId)
       await escrow.refund(onchainId)
       const auth = await signAction(signMessageAsync, address, 'stop-session', id)
@@ -248,30 +310,26 @@ export default function SessionPage() {
       const response = await fetch(`${apiBase}/api/sessions/${id}`)
       if (!response.ok) throw new Error('Session stopped; refresh to read final settlement')
       const settled = await response.json()
-      if (settled.ended_at) sessionEndRef.current = new Date(settled.ended_at.replace(' ', 'T') + (settled.ended_at.endsWith('Z') ? '' : 'Z')).getTime()
+      if (settled.ended_at)
+        sessionEndRef.current = new Date(
+          settled.ended_at.replace(' ', 'T') + (settled.ended_at.endsWith('Z') ? '' : 'Z'),
+        ).getTime()
       setAccrued(settled.accrued_total)
       setCostSnapshot(settled.cost_snapshot)
       setStatus('stopped')
       eventSourceRef.current?.close()
       setShowReview(true)
     } catch (e: any) {
-      alert(`Failed to stop: ${e.message}`)
+      setPageError(displayError(e, '結束或退款尚未完成，請確認錢包狀態後再次操作。'))
     } finally {
       setIsActionLoading(false)
     }
   }
 
-  // Close escrow after a failed generation; the backend also stops proof renewal.
-  const failureCloseAttempted = useRef(false)
-  const hasChatError = chatHistory.some(message => message.role === 'error')
-  useEffect(() => {
-    if (!hasChatError || status === 'stopped' || !address || onchainId == null || failureCloseAttempted.current) return
-    failureCloseAttempted.current = true
-    void handleStop()
-  }, [hasChatError, status, address, onchainId])
-
   const sessionDuration = () => {
-    const secs = Math.floor(((sessionEndRef.current ?? Date.now()) - sessionStartRef.current) / 1000)
+    const secs = Math.floor(
+      ((sessionEndRef.current ?? Date.now()) - sessionStartRef.current) / 1000,
+    )
     const m = Math.floor(secs / 60)
     const s = secs % 60
     if (m === 0) return `${s}s`
@@ -287,12 +345,13 @@ export default function SessionPage() {
       setRatingSubmitted(true)
     } catch {
       setReviewRating(0)
+      setPageError('評分尚未送出，請稍後再試。')
     }
   }
 
   async function sendMessage() {
     const text = chatInput.trim()
-    if (!text || chatLoading) return
+    if (!text || chatLoading || status !== 'active') return
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: 'user', text }
     const nextHistory = [...chatHistory, userMsg]
@@ -301,16 +360,19 @@ export default function SessionPage() {
     setChatLoading(true)
 
     try {
-      const geminiHistory = nextHistory.slice(0, -1).filter((m): m is ChatMessage & { role: 'user' | 'model' } => m.role !== 'error').map(m => ({
-        role: m.role,
-        parts: [{ text: m.text }],
-      }))
-      
-      if(!address)throw new Error('Connect your session wallet')
-      const auth=await signAction(signMessageAsync,address,'chat-session',id)
-      const { reply, toolCallCount: newToolCount } = await chatInSession(id, text, geminiHistory,auth)
-      
-      setChatHistory(prev => {
+      const geminiHistory = nextHistory
+        .slice(0, -1)
+        .filter((m): m is ChatMessage & { role: 'user' | 'model' } => m.role !== 'error')
+        .map((m) => ({
+          role: m.role,
+          parts: [{ text: m.text }],
+        }))
+
+      if (!address) throw new Error('Connect your session wallet')
+      const auth = await signAction(signMessageAsync, address, 'chat-session', id)
+      const { reply } = await chatInSession(id, text, geminiHistory, auth)
+
+      setChatHistory((prev) => {
         const next = [...prev]
         if (next.length > 0 && next[next.length - 1].role === 'model') {
           next[next.length - 1].text = reply || next[next.length - 1].text
@@ -319,12 +381,15 @@ export default function SessionPage() {
         }
         return next
       })
-      
-      if (newToolCount) {
-        setToolCallCount(prev => prev + newToolCount)
-      }
     } catch (e: any) {
-      setChatHistory(prev => [...prev, { id: crypto.randomUUID(), role: 'error', text: `Failed to reach AI: ${e.message}` }])
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'error',
+          text: displayError(e, '回覆未能完成，請稍後再試。也可以自行結束並結算。'),
+        },
+      ])
     } finally {
       setChatLoading(false)
     }
@@ -335,224 +400,236 @@ export default function SessionPage() {
   }
 
   return (
-    <div className="max-w-[1920px] mx-auto px-6 lg:px-24 pt-12 lg:pt-24 pb-32">
-      <div className="flex items-end justify-between border-b border-border-strong pb-8 mb-16">
+    <div className="page-width page-section session-page">
+      <nav className="session-destinations" aria-label="服務導覽">
+        <Link href="/agents" className="breadcrumb">
+          <Icon name="back" />
+          探索服務
+        </Link>
+        <Link href="/sessions" className="text-link">
+          我的紀錄
+          <Icon />
+        </Link>
+      </nav>
+      <div className="page-heading">
         <div>
-          <h1 className="text-[3rem] font-display italic leading-none mb-2">Live Session</h1>
-          <p className="text-text-secondary text-sm font-mono break-all">#{id}</p>
+          <h1>{serviceName}</h1>
         </div>
-        <StreamStatusBadge status={status} />
+        {sessionAvailable && <StreamStatusBadge status={status} />}
       </div>
-
-
-
-      <div className="grid grid-cols-12 gap-8 items-start">
-        <div className="col-span-12 lg:col-span-3 min-w-0 space-y-8">
-          <SalaryTicker accrued={accrued} ratePerSec={ratePerSec} status={status} snapshot={costSnapshot} />
-          <CostBreakdown curatorRate={curatorRate} platformFee={platformFee} />
+      {pageError && (
+        <div role="alert" className="notice mb-6">
+          {pageError}
         </div>
-
-        <div className="col-span-12 lg:col-span-6 min-w-0 h-full min-h-[40rem]">
-          <AgentWorkTimeline steps={steps} />
-        </div>
-
-        <div className="col-span-12 lg:col-span-3 min-w-0 h-full max-h-[40rem]">
-          <ProofHeartbeatTimeline proofs={proofs} />
-        </div>
-      </div>
-
-      <div className="mt-16 border border-border-subtle bg-surface-elevated flex flex-col h-[36rem] overflow-hidden shadow-2xl shadow-black/5">
-        <div className="flex items-center justify-between px-6 pt-4 pb-3 border-b border-border-subtle bg-surface">
-          <p className="text-xs text-text-tertiary uppercase tracking-widest font-bold">
-            Chat with Agent
-          </p>
-          <button type="button" onClick={() => setChatHistory([])} className="text-xs uppercase tracking-widest font-bold text-text-tertiary hover:text-text-primary transition-colors">
-            Clear Chat
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto px-6 py-8 space-y-6 bg-surface-elevated">
-          {chatHistory.length === 0 && (
-            <p className="text-text-tertiary text-sm italic font-display text-center py-12">Ask the agent anything about the current session...</p>
-          )}
-          {chatHistory.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-full md:max-w-[85%] px-6 py-4 text-sm ${
-                msg.role === 'user'
-                  ? 'bg-surface-dim text-text-primary border border-border-strong font-medium'
-                  : 'bg-surface text-text-secondary border border-border-subtle'
-              }`}>
-                {msg.role === 'model' ? <Markdown>{msg.text}</Markdown> : <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>}
-              </div>
-            </div>
-          ))}
-          {chatLoading && (
-            <div className="flex justify-start">
-              <div className="bg-surface text-text-tertiary border border-border-subtle px-6 py-4 text-sm">
-                <span className="flex items-center gap-3 font-medium uppercase tracking-widest text-[10px]">
-                  <span className="w-3 h-3 border-2 border-border-strong border-t-accent animate-spin" />
-                  Thinking...
-                </span>
-              </div>
-            </div>
-          )}
-          <div ref={chatBottomRef} />
-        </div>
-        
-        {toolActivity.length > 0 && (
-          <div className="bg-surface-dim border-t border-border-subtle px-6 py-3">
-            <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold text-text-secondary">
-              <span>Tools: {toolCallCount} calls</span>
-              <div className="flex flex-wrap gap-2">
-                {toolActivity.slice(-5).map((a) => (
-                  <span key={a.id} className="bg-surface-elevated border border-border-subtle text-text-secondary px-2 py-1 uppercase tracking-widest text-[10px]">{a.name}</span>
-                ))}
-              </div>
-            </div>
+      )}
+      {sessionLoading ? (
+        <p role="status" className="py-16">
+          正在讀取對話與費用紀錄…
+        </p>
+      ) : !sessionAvailable ? (
+        <Link href="/sessions" className="button-secondary">
+          查看我的紀錄
+        </Link>
+      ) : (
+        <>
+          <div className="session-mobile-cost">
+            <span>
+              {status === 'stopped' ? '結算費用' : '已確認費用'}：{(accrued / 1e6).toFixed(6)} USDC
+            </span>
+            {status !== 'stopped' && (
+              <button onClick={handleStop} disabled={!address || isActionLoading}>
+                {isActionLoading ? '正在結束與退款…' : '結束並結算'}
+              </button>
+            )}
           </div>
-        )}
-        
-        <div className="flex flex-wrap gap-3 p-4 md:p-6 border-t border-border-subtle bg-surface">
-          {status !== 'stopped' && (
-            <button
-              type="button"
-              onClick={handleStop}
-              disabled={!address || isActionLoading}
-              className="px-6 py-4 text-xs uppercase tracking-widest font-bold border border-red-900/50 text-red-500 hover:bg-red-900/10 transition-colors disabled:opacity-50"
-            >
-              {isActionLoading ? 'Stopping...' : 'End Session'}
-            </button>
-          )}
-          <input
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={e => { if(e.key === 'Enter' && !e.shiftKey) sendMessage() }}
-            placeholder={status === 'stopped' ? 'Session ended' : 'Ask the agent...'}
-            disabled={chatLoading || status === 'stopped'}
-            aria-label="Message to agent"
-            className="min-w-0 w-full md:w-auto flex-1 bg-surface-elevated border border-border-subtle px-6 py-4 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent outline-none disabled:opacity-50 transition-colors"
-          />
-          <button
-            type="button"
-            onClick={sendMessage}
-            disabled={chatLoading || !chatInput.trim() || status === 'stopped'}
-            className="bg-text-primary text-surface-elevated font-bold px-8 py-4 text-xs uppercase tracking-widest transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-
-      {showReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-surface-elevated border border-border-strong w-full max-w-2xl mx-4 shadow-2xl shadow-black/10">
-            <div className="border-b border-border-subtle p-8 bg-surface-dim flex items-center justify-between">
-              <div>
-                <h3 className="font-display font-bold text-3xl text-text-primary italic">Session Complete</h3>
-                <p className="text-text-tertiary text-xs font-mono mt-2">#{id?.slice(0, 8)}</p>
-              </div>
-              <span className="text-xs uppercase tracking-widest font-bold px-3 py-1 border border-border-strong text-text-tertiary">Settled</span>
-            </div>
-
-            <div className="grid grid-cols-3 divide-x divide-border-subtle text-center border-b border-border-subtle">
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-accent mb-1">${(accrued / 1_000_000).toFixed(4)}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Total Cost</div>
-              </div>
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-text-primary mb-1">{sessionDuration()}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Duration</div>
-              </div>
-              <div className="p-8">
-                <div className="text-3xl font-display font-bold text-text-primary mb-1">{proofs.length}</div>
-                <div className="text-text-tertiary uppercase tracking-widest text-[10px] font-bold">Proofs</div>
-              </div>
-            </div>
-
-            <div className="p-8 border-b border-border-subtle">
-              <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-4">Settlement Breakdown</p>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Curator Payout</span>
-                  <span className="text-text-primary font-bold">${(ratePerSec > 0 ? accrued * curatorRate / ratePerSec / 1_000_000 : 0).toFixed(4)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-secondary">Platform Fee</span>
-                  <span className="text-text-primary font-bold">${(ratePerSec > 0 ? accrued * platformFee / ratePerSec / 1_000_000 : 0).toFixed(4)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 border-b border-border-subtle">
-              <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-4">Session Activity</p>
-              <div className="grid grid-cols-3 gap-6 text-sm">
+          {showReview && (
+            <SettlementDialog onClose={() => setShowReview(false)}>
+              <div className="flex flex-wrap justify-between gap-4">
                 <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{chatHistory.filter(m => m.role === 'user').length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Messages Sent</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{chatHistory.filter(m => m.role === 'model').length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Agent Replies</span>
-                </div>
-                <div>
-                  <span className="text-2xl font-display font-bold text-text-primary">{steps.length}</span>
-                  <span className="text-text-tertiary text-xs block mt-1">Work Steps</span>
+                  <h2 id="settlement-title">這回，分身收工。</h2>
+                  <p>
+                    最終費用 {(accrued / 1e6).toFixed(6)} USDC · 使用時間 {sessionDuration()}
+                    。對話仍可在這裡查看。
+                  </p>
                 </div>
               </div>
-            </div>
-
-            {address && agentId && (
-              <div className="p-8 border-b border-border-subtle">
-                <p className="text-xs uppercase tracking-widest font-bold text-text-tertiary mb-5">Rate This Agent</p>
-                {ratingSubmitted ? (
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <span key={star} className={`text-2xl ${star <= reviewRating ? 'text-accent' : 'text-border-strong'}`}>★</span>
-                      ))}
-                    </div>
-                    <span className="text-xs uppercase tracking-widest text-text-tertiary">Submitted — thank you</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
+              {address && agentId && (
+                <div className="mt-4">
+                  <p>這次的服務對你有幫助嗎？</p>
+                  {pageError && (
+                    <p role="alert" className="text-accent">
+                      {pageError}
+                    </p>
+                  )}
+                  {ratingSubmitted ? (
+                    <p role="status">謝謝，你的 {reviewRating} 分評價已送出。</p>
+                  ) : (
+                    <div className="rating-buttons">
+                      {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           type="button"
+                          aria-label={`評分 ${star} 分`}
                           onClick={() => handleRateAgent(star)}
                           onMouseEnter={() => setRatingHover(star)}
                           onMouseLeave={() => setRatingHover(0)}
-                          className="text-2xl transition-colors"
+                          className={
+                            (ratingHover || reviewRating) >= star
+                              ? 'text-accent'
+                              : 'text-text-secondary'
+                          }
                         >
-                          <span className={(ratingHover || reviewRating) >= star ? 'text-accent' : 'text-border-strong'}>★</span>
+                          ★
                         </button>
                       ))}
                     </div>
-                    <span className="text-xs text-text-tertiary">Click to rate</span>
-                  </div>
+                  )}
+                </div>
+              )}
+              <div className="settlement-actions">
+                <Link href="/agents" className="button-primary">
+                  再找一位神隊友
+                  <Icon />
+                </Link>
+                <Link href="/sessions" className="text-link">
+                  查看我的紀錄
+                </Link>
+              </div>
+            </SettlementDialog>
+          )}
+          <div className="session-layout">
+            <section className="session-chat" aria-label="與服務對話">
+              <div className="session-chat-header">
+                <span>這次的討論</span>
+                {clearedHistory ? (
+                  <button
+                    className="text-link text-xs"
+                    onClick={() => {
+                      setChatHistory((current) => [...clearedHistory, ...current])
+                      setClearedHistory(null)
+                    }}
+                  >
+                    復原清除
+                  </button>
+                ) : (
+                  <button
+                    className="text-link text-xs"
+                    disabled={!chatHistory.length || chatLoading}
+                    onClick={() => {
+                      setClearedHistory(chatHistory)
+                      setChatHistory([])
+                    }}
+                  >
+                    清除畫面
+                  </button>
                 )}
               </div>
-            )}
-
-            <div className="p-8 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => router.push('/sessions')}
-                className="text-xs uppercase tracking-widest font-bold text-text-tertiary hover:text-text-primary transition-colors"
+              <div className="chat-messages" role="log" aria-label="對話內容" aria-live="polite">
+                {chatHistory.length === 0 && (
+                  <div className="py-12 text-text-secondary">
+                    <h2 className="text-xl mb-3 text-text-primary">從你最在意的問題開始。</h2>
+                    <p className="text-sm">說明背景、希望達成的事，以及目前遇到的限制。</p>
+                  </div>
+                )}
+                {chatHistory.map((msg) => (
+                  <div key={msg.id} className={`chat-message chat-message-${msg.role}`}>
+                    <p className="message-speaker">
+                      {msg.role === 'user' ? '你' : msg.role === 'error' ? '服務提示' : 'AI 回覆'}
+                    </p>
+                    {msg.role === 'model' ? (
+                      <Markdown>{msg.text}</Markdown>
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                    )}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <p className="text-sm text-text-secondary" role="status">
+                    正在整理回覆，請稍候…
+                  </p>
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+              <form
+                className="chat-composer"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void sendMessage()
+                }}
               >
-                View All Sessions &rarr;
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowReview(false)}
-                className="bg-text-primary text-surface-elevated font-bold px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-accent"
-              >
-                Dismiss
-              </button>
-            </div>
+                <textarea
+                  rows={2}
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Enter' &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing &&
+                      e.keyCode !== 229
+                    ) {
+                      e.preventDefault()
+                      void sendMessage()
+                    }
+                  }}
+                  placeholder={
+                    status === 'stopped'
+                      ? '本次服務已結束，可回看對話。'
+                      : '補充你的情況，或接著問…'
+                  }
+                  disabled={chatLoading || status !== 'active'}
+                  aria-label="你的訊息"
+                />
+                <button
+                  type="submit"
+                  className="button-primary"
+                  disabled={chatLoading || !chatInput.trim() || status !== 'active'}
+                >
+                  {chatLoading ? '回覆中' : '送出'}
+                  <Icon />
+                </button>
+              </form>
+            </section>
+            <aside className="session-sidebar" aria-label="費用與操作">
+              <SalaryTicker
+                accrued={accrued}
+                ratePerSec={ratePerSec}
+                status={status}
+                snapshot={costSnapshot}
+              />
+              {status !== 'stopped' && <p>離開頁面不會停止計費，請按「結束並結算」。</p>}
+              {status !== 'stopped' ? (
+                <button
+                  className="button-secondary"
+                  onClick={handleStop}
+                  disabled={!address || isActionLoading}
+                >
+                  {isActionLoading ? '正在結束與退款…' : '結束並結算'}
+                </button>
+              ) : (
+                <button className="button-secondary" onClick={() => setShowReview(true)}>
+                  查看結算結果
+                  <Icon />
+                </button>
+              )}
+              {!address && status !== 'stopped' && (
+                <p>請用本次服務的錢包連接，才能繼續對話或結束服務。</p>
+              )}
+              <details className="technical-details">
+                <summary>費率明細</summary>
+                <div>
+                  <CostBreakdown curatorRate={curatorRate} platformFee={platformFee} />
+                </div>
+              </details>
+            </aside>
           </div>
-        </div>
+          <ActivityTrail
+            steps={steps}
+            proofs={proofs}
+            working={chatLoading}
+            stopped={status === 'stopped'}
+          />
+        </>
       )}
     </div>
   )

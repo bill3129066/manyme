@@ -42,7 +42,7 @@ function parseInputSchema(schemaJson: string | null): InputField[] {
 
 function formatPrice(microUnits: number): string {
   if (microUnits === 0) return 'Free'
-  return `$${(microUnits / 1_000_000).toFixed(4)}`
+  return `$${(microUnits / 1_000_000).toFixed(6)}`
 }
 
 export default function SkillDetailPage() {
@@ -331,7 +331,7 @@ export default function SkillDetailPage() {
                   <span>
                     Platform balance:
                     <span className="text-accent ml-2 font-mono">
-                      {balance !== null ? `$${(balance / 1_000_000).toFixed(4)}` : '...'}
+                      {balance !== null ? `$${(balance / 1_000_000).toFixed(6)}` : '...'}
                     </span>
                   </span>
                   <button type="button" onClick={handleDeposit} disabled={depositing}
@@ -425,7 +425,7 @@ export default function SkillDetailPage() {
 
                 <div className="flex items-center justify-between mt-4 text-xs uppercase tracking-widest text-text-tertiary">
                   <span>
-                    Balance: <span className="text-accent font-mono ml-2">{balance !== null ? `$${(balance / 1_000_000).toFixed(4)}` : '...'}</span>
+                    Balance: <span className="text-accent font-mono ml-2">{balance !== null ? `$${(balance / 1_000_000).toFixed(6)}` : '...'}</span>
                   </span>
                   <span>{chatHistory.filter(m => m.role === 'model').length} responses</span>
                 </div>

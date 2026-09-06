@@ -1,28 +1,24 @@
 import type { Metadata } from 'next'
-import { Inter, Newsreader } from 'next/font/google'
+import { Noto_Sans_TC } from 'next/font/google'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import './globals.css'
 import { NavBar } from '@/components/NavBar'
 
-const Providers = dynamic(
-  () => import('./providers').then(mod => ({ default: mod.Providers })),
-  { ssr: false }
-)
-
-const bodyFont = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
+const Providers = dynamic(() => import('./providers').then((mod) => ({ default: mod.Providers })), {
+  ssr: false,
 })
 
-const displayFont = Newsreader({
+const bodyFont = Noto_Sans_TC({
   subsets: ['latin'],
-  variable: '--font-display',
-  style: ['normal', 'italic'],
+  variable: '--font-body',
+  weight: ['400', '500', '600', '700', '800', '900'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'ManyMe 分身有術 — 按需使用達人經驗',
-  description: '讓人們按需使用達人經驗的 AI 服務市集。攻略我看過了,但我家不是範例家庭。',
+  title: '分身有術 — 遇事有路',
+  description: '把達人的經驗，變成你的神隊友。按需使用過來人的方法，陪你想清楚眼前的問題。',
 }
 
 export default function RootLayout({
@@ -31,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-Hant">
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
@@ -39,15 +35,28 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} font-sans min-h-screen bg-background text-text-primary`}
+        className={`${bodyFont.variable} font-sans min-h-screen bg-background text-text-primary`}
         suppressHydrationWarning
       >
         <Providers>
           <div className="flex flex-col min-h-screen">
+            <a href="#main-content" className="skip-link">
+              跳到主要內容
+            </a>
             <NavBar />
-            <main className="flex-grow w-full">
+            <main id="main-content" className="flex-grow w-full">
               {children}
             </main>
+            <footer className="site-footer page-width">
+              <Link href="/" className="footer-brand">
+                分身有術<span>讓好建議，不必靠人脈。</span>
+              </Link>
+              <div>
+                <Link href="/agents">探索服務</Link>
+                <Link href="/agents/new">上架服務</Link>
+                <Link href="/settings">我的錢包</Link>
+              </div>
+            </footer>
           </div>
         </Providers>
       </body>

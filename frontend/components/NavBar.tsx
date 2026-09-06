@@ -3,63 +3,89 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ConnectWalletButton } from './wallet/ConnectWalletButton'
+import { Icon } from './Icon'
 
 export function NavBar() {
   const pathname = usePathname()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  const navLink = (href: string, label: string, isActive: boolean) => (
-    <Link
-      href={href}
-      onClick={() => setIsMobileMenuOpen(false)}
-      className={`text-xs uppercase tracking-widest transition-colors ${
-        isActive
-          ? 'border-b-2 border-text-primary text-text-primary'
-          : 'text-text-tertiary hover:text-text-primary'
-      }`}
-    >
-      {label}
-    </Link>
-  )
-
+  const [open, setOpen] = useState(false)
+  const links = [
+    {
+      href: '/agents',
+      label: '探索服務',
+      active: pathname.startsWith('/agents') && pathname !== '/agents/new',
+    },
+    {
+      href: '/sessions',
+      label: '我的紀錄',
+      active: pathname.startsWith('/sessions') || pathname.startsWith('/session/'),
+    },
+    { href: '/settings', label: '我的錢包', active: pathname === '/settings' },
+    {
+      href: '/studio',
+      label: '達人工作室',
+      active: pathname === '/studio' || pathname === '/agents/new',
+    },
+  ]
   return (
-    <nav className="sticky top-0 z-50 bg-surface-dim">
-      <div className="mx-auto flex flex-wrap gap-4 max-w-[1920px] items-center justify-between px-4 sm:px-8 lg:px-24 py-4 lg:py-8">
-        <div className="flex items-center gap-4 lg:gap-12">
-          <button 
+    <header className="site-header">
+      <nav className="site-nav" aria-label="主要導覽">
+        <Link href="/" className="wordmark" aria-label="分身有術，回首頁">
+          <span className="brand-mark" aria-hidden="true">
+            <i />
+            <i />
+          </span>
+          分身有術
+        </Link>
+        <div className="nav-links">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} aria-current={link.active ? 'page' : undefined}>
+              {link.label}
+            </Link>
+          ))}
+        </div>
+        <div className="nav-actions">
+          <details className="wallet-menu">
+            <summary>錢包連線</summary>
+            <div className="wallet-panel">
+              <h2>我的錢包</h2>
+              <ConnectWalletButton />
+              <Link href="/settings" className="text-link">
+                開啟我的錢包
+                <Icon />
+              </Link>
+            </div>
+          </details>
+          <button
+            className="mobile-toggle"
             type="button"
-            aria-label="Toggle navigation"
-            aria-expanded={isMobileMenuOpen}
-            className="md:hidden text-text-primary flex items-center justify-center"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={open ? '關閉選單' : '開啟選單'}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen(!open)}
           >
-            <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+            <Icon name={open ? 'close' : 'menu'} />
           </button>
-          <Link href="/" className="font-display whitespace-nowrap text-3xl font-bold tracking-tighter text-text-primary">
-            分身有術
+        </div>
+      </nav>
+      {open && (
+        <nav id="mobile-nav" className="mobile-nav" aria-label="手機導覽">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={link.active ? 'page' : undefined}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+              <Icon />
+            </Link>
+          ))}
+          <Link href="/agents/new" onClick={() => setOpen(false)}>
+            上架我的服務
+            <Icon name="plus" />
           </Link>
-          <div className="hidden md:flex gap-8">
-            {navLink('/agents', 'Agents', pathname === '/agents' || (pathname?.startsWith('/agents/') ?? false))}
-            {navLink('/agents/new', 'Upload', pathname === '/agents/new')}
-            {navLink('/studio', 'Studio', pathname?.startsWith('/studio') ?? false)}
-            {navLink('/sessions', 'Sessions', pathname?.startsWith('/sessions') ?? false)}
-            {navLink('/settings', 'Settings', pathname?.startsWith('/settings') ?? false)}
-          </div>
-        </div>
-        <ConnectWalletButton />
-      </div>
-      
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-border-subtle bg-surface-dim">
-          <div className="flex flex-col px-4 sm:px-8 py-4 gap-6">
-            {navLink('/agents', 'Agents', pathname === '/agents' || (pathname?.startsWith('/agents/') ?? false))}
-            {navLink('/agents/new', 'Upload', pathname === '/agents/new')}
-            {navLink('/studio', 'Studio', pathname?.startsWith('/studio') ?? false)}
-            {navLink('/sessions', 'Sessions', pathname?.startsWith('/sessions') ?? false)}
-            {navLink('/settings', 'Settings', pathname?.startsWith('/settings') ?? false)}
-          </div>
-        </div>
+        </nav>
       )}
-    </nav>
+    </header>
   )
 }
